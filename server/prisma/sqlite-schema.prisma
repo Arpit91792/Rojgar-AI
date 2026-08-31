@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum JobType {
+  GOVERNMENT
+  PRIVATE
+  INTERNSHIP
+  SCHOLARSHIP
+  HACKATHON
+  PLACEMENT_DRIVE
+  COURSE
+  TIME_TABLE
+  RESULT
+  ADMIT_CARD
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+  EXPIRED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          String   @default("USER")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  savedJobs     SavedJob[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id                  String   @id @default(cuid())
+  title               String
+  type                JobType
+  organization        String
+  department          String?
+  location            String
+  qualification       String
+  ageLimit            String?
+  salary              String?
+  vacancies           String?
+  applicationStart    DateTime?
+  lastDate            DateTime
+  examDate            DateTime?
+  description         String?
+  officialWebsite     String?
+  notificationPdf     String?
+  applyLink           String?
+  status              JobStatus @default(DRAFT)
+  
+  // Metadata
+  views               Int      @default(0)
+  applications        Int      @default(0)
+  isFeatured          Boolean  @default(false)
+  
+  // Timestamps
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  publishedAt         DateTime?
+  
+  // Relations
+  createdBy           String
+  updatedBy           String?
+  publishedBy         String?
+  
+  savedJobs           SavedJob[]
+  
+  @@index([type])
+  @@index([status])
+  @@index([lastDate])
+  @@index([createdAt])
+  @@index([organization])
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, jobId])
+}
+
+model Result {
+  id           String   @id @default(cuid())
+  title        String
+  organization String
+  description  String?
+  resultUrl    String?
+  pdfUrl       String?
+  publishedAt  DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TimeTable {
+  id           String   @id @default(cuid())
+  title        String
+  organization String
+  description  String?
+  pdfUrl       String?
+  startDate    DateTime?
+  endDate      DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AdmitCard {
+  id           String   @id @default(cuid())
+  title        String
+  organization String
+  description  String?
+  pdfUrl       String?
+  downloadUrl  String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Blog {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  author    String
+  excerpt   String?
+  imageUrl  String?
+  slug      String   @unique
+  isPublished Boolean @default(false)
+  views     Int      @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  publishedAt DateTime?
+}
