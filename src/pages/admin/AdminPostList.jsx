@@ -1,16 +1,13 @@
-// Admin list page — reads from localStorage via DataContext.
-// FUTURE: replace DataContext calls with adminApi.get('/api/jobs', { params })
-
 import React, { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../../context/DataContext'
 import EmptyState from '../../components/EmptyState'
-import { Plus, Pencil, Trash2, Eye, EyeOff, Archive, Search, ExternalLink } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Archive, Search, ExternalLink, Loader2 } from 'lucide-react'
 
 const STATUS_STYLES = {
       PUBLISHED: 'bg-green-100 text-green-700',
       DRAFT: 'bg-yellow-100 text-yellow-700',
-      ARCHIVED: 'bg-gray-100   text-gray-500',
+      ARCHIVED: 'bg-gray-100 text-gray-500',
 }
 
 const StatusBadge = ({ status }) => (
@@ -19,7 +16,6 @@ const StatusBadge = ({ status }) => (
       </span>
 )
 
-// category value → DataContext slice key
 const CAT_TO_SLICE = {
       GOVERNMENT_JOB: 'governmentJobs',
       PRIVATE_JOB: 'privateJobs',
@@ -33,13 +29,13 @@ const fmt = (d) =>
       d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
 const AdminPostList = ({ title, category, addPath, editPathFn }) => {
-      const { publishPost, unpublishPost, archivePost, deletePost, ...data } = useData()
-
+      const { publishPost, unpublishPost, archivePost, deletePost, loading, ...data } = useData()
       const posts = data[CAT_TO_SLICE[category]] || []
 
       const [search, setSearch] = useState('')
       const [statusFilter, setStatusFilter] = useState('')
       const [confirmDelete, setConfirmDelete] = useState(null)
+      const [actionLoading, setActionLoading] = useState(null) // id of row being actioned
 
       const filtered = useMemo(() =>
             posts.filter((p) => {
@@ -53,14 +49,24 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
             [posts, search, statusFilter]
       )
 
-      const handleToggle = (post) => {
-            if (post.status === 'PUBLISHED') unpublishPost(post.id)
-            else publishPost(post.id)
+      const withLoading = async (id, fn) => {
+            setActionLoading(id)
+            try { await fn() } catch (e) { console.error(e) }
+            finally { setActionLoading(null) }
       }
 
-      const handleDelete = (id) => {
-            deletePost(id)
-            setConfirmDelete(null)
+      const handleToggle = (post) => {
+            withLoading(post.id, () =>
+                  post.status === 'PUBLISHED' ? unpublishPost(post.id) : publishPost(post.id)
+            )
+      }
+
+      const handleArchive = (id) => withLoading(id, () => archivePost(id))
+
+      const handleDelete = async (id) => {
+            setActionLoading(id)
+            try { await deletePost(id) } catch (e) { console.error(e) }
+            finally { setActionLoading(null); setConfirmDelete(null) }
       }
 
       return (
@@ -69,14 +75,15 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                               <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-                              <p className="text-sm text-gray-500 mt-0.5">{filtered.length} of {posts.length} posts</p>
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                    {loading ? 'Loading…' : `${filtered.length} of ${posts.length} posts`}
+                              </p>
                         </div>
                         <Link
                               to={addPath}
                               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
                         >
-                              <Plus size={16} />
-                              Add {title}
+                              <Plus size={16} /> Add {title}
                         </Link>
                   </div>
 
@@ -104,8 +111,15 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                         </select>
                   </div>
 
+                  {/* Loading skeleton */}
+                  {loading && (
+                        <div className="bg-white rounded-xl border p-8 text-center text-gray-400 flex items-center justify-center gap-2">
+                              <Loader2 size={18} className="animate-spin" /> Loading from server…
+                        </div>
+                  )}
+
                   {/* List */}
-                  {filtered.length === 0 ? (
+                  {!loading && filtered.length === 0 && (
                         <EmptyState
                               message={`No ${title.toLowerCase()} found.`}
                               action={
@@ -114,7 +128,9 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                                     </Link>
                               }
                         />
-                  ) : (
+                  )}
+
+                  {!loading && filtered.length > 0 && (
                         <div className="bg-white rounded-xl border overflow-hidden">
                               <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
@@ -129,7 +145,7 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                                           </thead>
                                           <tbody className="divide-y divide-gray-100">
                                                 {filtered.map((post) => (
-                                                      <tr key={post.id} className="hover:bg-gray-50">
+                                                      <tr key={post.id} className={`hover:bg-gray-50 ${actionLoading === post.id ? 'opacity-50 pointer-events-none' : ''}`}>
                                                             <td className="px-4 py-3">
                                                                   <p className="font-medium text-gray-900 truncate max-w-[220px]">{post.title}</p>
                                                                   <p className="text-xs text-gray-400 mt-0.5">{fmt(post.createdAt)}</p>
@@ -143,10 +159,10 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                                                             <td className="px-4 py-3"><StatusBadge status={post.status} /></td>
                                                             <td className="px-4 py-3">
                                                                   <div className="flex items-center justify-end gap-1">
-                                                                        {/* Preview (published only) */}
-                                                                        {post.status === 'PUBLISHED' && post.slug && (
+                                                                        {/* Preview */}
+                                                                        {post.status === 'PUBLISHED' && (
                                                                               <Link
-                                                                                    to={`/posts/${post.slug}`}
+                                                                                    to={`/posts/${post.id}`}
                                                                                     target="_blank"
                                                                                     title="Preview on public site"
                                                                                     className="p-1.5 rounded-md text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition-colors"
@@ -160,11 +176,14 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                                                                               title={post.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                                                                               className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                                                         >
-                                                                              {post.status === 'PUBLISHED' ? <EyeOff size={15} /> : <Eye size={15} />}
+                                                                              {actionLoading === post.id
+                                                                                    ? <Loader2 size={15} className="animate-spin" />
+                                                                                    : post.status === 'PUBLISHED' ? <EyeOff size={15} /> : <Eye size={15} />
+                                                                              }
                                                                         </button>
                                                                         {/* Archive */}
                                                                         <button
-                                                                              onClick={() => archivePost(post.id)}
+                                                                              onClick={() => handleArchive(post.id)}
                                                                               title="Archive"
                                                                               className="p-1.5 rounded-md text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
                                                                         >
@@ -196,13 +215,13 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                         </div>
                   )}
 
-                  {/* Delete confirmation */}
+                  {/* Delete confirmation modal */}
                   {confirmDelete && (
                         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                               <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
                                     <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Post?</h3>
                                     <p className="text-sm text-gray-600 mb-6">
-                                          This will permanently remove it from localStorage and the public website.
+                                          This will permanently remove it from the database and the public website.
                                     </p>
                                     <div className="flex gap-3">
                                           <button
@@ -213,8 +232,10 @@ const AdminPostList = ({ title, category, addPath, editPathFn }) => {
                                           </button>
                                           <button
                                                 onClick={() => handleDelete(confirmDelete)}
-                                                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium"
+                                                disabled={!!actionLoading}
+                                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-60"
                                           >
+                                                {actionLoading ? <Loader2 size={14} className="animate-spin" /> : null}
                                                 Delete
                                           </button>
                                     </div>

@@ -1,10 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// DataContext.jsx
-//
-// DEVELOPMENT ONLY — localStorage is browser-specific.
-// Data persists across page refreshes but NOT across devices/users.
-// Replace postService internals with backend API calls before production.
-// ─────────────────────────────────────────────────────────────────────────────
+// DataContext.jsx — API-backed data context
+// All job/post data now comes from the backend API.
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import * as postService from '../services/postService'
@@ -14,14 +9,17 @@ const DataContext = createContext(null)
 export const DataProvider = ({ children }) => {
       const [posts, setPosts] = useState([])
       const [loading, setLoading] = useState(true)
+      const [error, setError] = useState(null)
 
-      // ── Load all posts from localStorage ─────────────────────────────────────
-      const loadAll = useCallback(() => {
+      const loadAll = useCallback(async () => {
             try {
                   setLoading(true)
-                  setPosts(postService.getPosts())
+                  setError(null)
+                  const data = await postService.getPosts()
+                  setPosts(data)
             } catch (err) {
                   console.error('[DataContext] load error:', err)
+                  setError('Failed to load posts from server.')
                   setPosts([])
             } finally {
                   setLoading(false)
@@ -30,22 +28,8 @@ export const DataProvider = ({ children }) => {
 
       useEffect(() => { loadAll() }, [loadAll])
 
-      // ── React to localStorage changes (same-tab + cross-tab) ─────────────────
-      useEffect(() => {
-            const handler = () => {
-                  try { setPosts(postService.getPosts()) } catch (_) { }
-            }
-            window.addEventListener('rojgar_storage_updated', handler)
-            window.addEventListener('storage', handler)
-            return () => {
-                  window.removeEventListener('rojgar_storage_updated', handler)
-                  window.removeEventListener('storage', handler)
-            }
-      }, [])
-
-      // ── Derived slices (by category) ─────────────────────────────────────────
+      // Derived slices by category
       const byCategory = (cat) => posts.filter((p) => p.category === cat)
-
       const governmentJobs = byCategory(postService.CATEGORIES.GOVERNMENT_JOB)
       const privateJobs = byCategory(postService.CATEGORIES.PRIVATE_JOB)
       const internships = byCategory(postService.CATEGORIES.INTERNSHIP)
@@ -53,45 +37,62 @@ export const DataProvider = ({ children }) => {
       const results = byCategory(postService.CATEGORIES.RESULT)
       const admitCards = byCategory(postService.CATEGORIES.ADMIT_CARD)
 
-      // ── Stats ─────────────────────────────────────────────────────────────────
-      const getStats = useCallback(() => postService.getStats(), [posts])
+      // Sync stats from posts array (dashboard uses this)
+      const getStats = useCallback(() => {
+            return {
+                  total: posts.length,
+                  published: posts.filter((p) => p.status === 'PUBLISHED').length,
+                  drafts: posts.filter((p) => p.status === 'DRAFT').length,
+                  archived: posts.filter((p) => p.status === 'ARCHIVED').length,
+                  governmentJobs: governmentJobs.length,
+                  privateJobs: privateJobs.length,
+                  internships: internships.length,
+                  timeTables: timeTables.length,
+                  results: results.length,
+                  admitCards: admitCards.length,
+            }
+      }, [posts])
 
-      // ── CRUD actions (write → reload) ─────────────────────────────────────────
-      const createPost = (data) => { const r = postService.createPost(data); loadAll(); return r }
-      const updatePost = (id, upd) => { const r = postService.updatePost(id, upd); loadAll(); return r }
-      const deletePost = (id) => { postService.deletePost(id); loadAll() }
-      const publishPost = (id) => { postService.publishPost(id); loadAll() }
-      const unpublishPost = (id) => { postService.unpublishPost(id); loadAll() }
-      const archivePost = (id) => { postService.archivePost(id); loadAll() }
+      // CRUD — all async, reload after each mutation
+      const createPost = async (data) => {
+            const r = await postService.createPost(data)
+            await loadAll()
+            return r
+      }
+      const updatePost = async (id, upd) => {
+            const r = await postService.updatePost(id, upd)
+            await loadAll()
+            return r
+      }
+      const deletePost = async (id) => {
+            await postService.deletePost(id)
+            await loadAll()
+      }
+      const publishPost = async (id) => {
+            await postService.publishPost(id)
+            await loadAll()
+      }
+      const unpublishPost = async (id) => {
+            await postService.unpublishPost(id)
+            await loadAll()
+      }
+      const archivePost = async (id) => {
+            await postService.archivePost(id)
+            await loadAll()
+      }
 
       return (
-            <DataContext.Provider
-                  value={{
-                        // All raw posts
-                        posts,
-                        loading,
-                        // Slices per category
-                        governmentJobs,
-                        privateJobs,
-                        internships,
-                        timeTables,
-                        results,
-                        admitCards,
-                        // Stats
-                        getStats,
-                        // CRUD
-                        createPost,
-                        updatePost,
-                        deletePost,
-                        publishPost,
-                        unpublishPost,
-                        archivePost,
-                        reload: loadAll,
-                        // Category constants
-                        CATEGORIES: postService.CATEGORIES,
-                        STATUSES: postService.STATUSES,
-                  }}
-            >
+            <DataContext.Provider value={{
+                  posts, loading, error,
+                  governmentJobs, privateJobs, internships,
+                  timeTables, results, admitCards,
+                  getStats,
+                  createPost, updatePost, deletePost,
+                  publishPost, unpublishPost, archivePost,
+                  reload: loadAll,
+                  CATEGORIES: postService.CATEGORIES,
+                  STATUSES: postService.STATUSES,
+            }}>
                   {children}
             </DataContext.Provider>
       )

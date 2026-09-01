@@ -1,9 +1,8 @@
-// Admin add/edit form — persists to localStorage via DataContext.
-// FUTURE: replace createPost/updatePost with adminApi calls.
-
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../../context/DataContext'
+import { adminGetPost } from '../../services/api.js'
+import { parseJobToForm } from '../../services/api.js'
 import * as postService from '../../services/postService'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
@@ -44,14 +43,14 @@ const FIELD_META = {
       title: { label: 'Title', type: 'text', required: true },
       organization: { label: 'Organization', type: 'text', required: true },
       department: { label: 'Department', type: 'text' },
-      location: { label: 'Location', type: 'text', required: true },
-      qualification: { label: 'Qualification', type: 'text', required: true },
+      location: { label: 'Location', type: 'text' },
+      qualification: { label: 'Qualification', type: 'text' },
       ageLimit: { label: 'Age Limit', type: 'text' },
       salary: { label: 'Salary', type: 'text' },
       stipend: { label: 'Stipend', type: 'text' },
       vacancies: { label: 'Vacancies', type: 'text' },
       applicationStartDate: { label: 'Application Start Date', type: 'date' },
-      lastDate: { label: 'Last Date', type: 'date', required: true },
+      lastDate: { label: 'Last Date', type: 'date' },
       examDate: { label: 'Exam Date', type: 'date' },
       releaseDate: { label: 'Admit Card Release Date', type: 'date' },
       resultDate: { label: 'Result Date', type: 'date' },
@@ -73,7 +72,7 @@ const FIELD_META = {
       subject: { label: 'Subject', type: 'text' },
       startTime: { label: 'Start Time', type: 'time' },
       endTime: { label: 'End Time', type: 'time' },
-      examName: { label: 'Exam Name', type: 'text', required: true },
+      examName: { label: 'Exam Name', type: 'text' },
 }
 
 const SECTION_LABELS = {
@@ -85,7 +84,6 @@ const SECTION_LABELS = {
       ADMIT_CARD: 'Admit Card',
 }
 
-// URL path segment → category constant
 const PATH_TO_CATEGORY = {
       'government-jobs': postService.CATEGORIES.GOVERNMENT_JOB,
       'private-jobs': postService.CATEGORIES.PRIVATE_JOB,
@@ -95,7 +93,6 @@ const PATH_TO_CATEGORY = {
       'admit-cards': postService.CATEGORIES.ADMIT_CARD,
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
 const AdminPostForm = ({ pathSegment, postId }) => {
       const navigate = useNavigate()
       const { createPost, updatePost } = useData()
@@ -107,47 +104,54 @@ const AdminPostForm = ({ pathSegment, postId }) => {
 
       const [form, setForm] = useState({})
       const [submitting, setSubmitting] = useState(false)
+      const [loadingPost, setLoadingPost] = useState(false)
       const [error, setError] = useState('')
 
-      // Populate form when editing
+      // Load existing post when editing
       useEffect(() => {
             if (!isEdit) return
-            const existing = postService.getPostById(postId)
-            if (existing) {
-                  setForm({ ...existing })
-            } else {
-                  setError('Post not found.')
-            }
+            setLoadingPost(true)
+            adminGetPost(postId)
+                  .then((res) => {
+                        const parsed = parseJobToForm(res.data)
+                        setForm(parsed)
+                  })
+                  .catch(() => setError('Post not found or failed to load.'))
+                  .finally(() => setLoadingPost(false))
       }, [postId, isEdit])
 
       const set = (field, val) => setForm((f) => ({ ...f, [field]: val }))
 
-      const handleSubmit = (status) => {
+      const handleSubmit = async (status) => {
             setError('')
 
-            for (const f of fields) {
-                  if (FIELD_META[f]?.required && !form[f]?.toString().trim()) {
-                        setError(`"${FIELD_META[f].label}" is required.`)
-                        return
-                  }
-            }
+            // Basic required-field check
+            if (!form.title?.trim()) { setError('"Title" is required.'); return }
+            if (!form.organization?.trim()) { setError('"Organization" is required.'); return }
 
             setSubmitting(true)
             try {
                   const payload = { ...form, category, status }
-
                   if (isEdit) {
-                        updatePost(postId, payload)
+                        await updatePost(postId, payload)
                   } else {
-                        createPost(payload)
+                        await createPost(payload)
                   }
-
                   navigate(`/admin/${pathSegment}`)
             } catch (err) {
-                  setError('Save failed. Please try again.')
+                  const msg = err?.response?.data?.message || err?.message || 'Save failed. Please try again.'
+                  setError(msg)
             } finally {
                   setSubmitting(false)
             }
+      }
+
+      if (loadingPost) {
+            return (
+                  <div className="flex items-center justify-center py-20">
+                        <Loader2 size={28} className="animate-spin text-blue-600" />
+                  </div>
+            )
       }
 
       return (
@@ -157,7 +161,7 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                               {isEdit ? `Edit ${sectionLabel}` : `Add ${sectionLabel}`}
                         </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                              Saved to localStorage · Persists across page refreshes
+                              Saved to the shared database — visible on all devices immediately.
                         </p>
                   </div>
 
@@ -172,7 +176,7 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         {fields.map((f) => {
                               const meta = FIELD_META[f]
                               if (!meta) return null
-                              const val = form[f] || ''
+                              const val = form[f] ?? ''
 
                               return (
                                     <div key={f}>
@@ -202,13 +206,12 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         })}
                   </div>
 
-                  {/* Buttons */}
                   <div className="flex flex-wrap gap-3">
                         <button
                               type="button"
                               onClick={() => handleSubmit('DRAFT')}
                               disabled={submitting}
-                              className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
+                              className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
                         >
                               {submitting && <Loader2 size={15} className="animate-spin" />}
                               Save Draft
@@ -217,7 +220,7 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                               type="button"
                               onClick={() => handleSubmit('PUBLISHED')}
                               disabled={submitting}
-                              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
                         >
                               {submitting && <Loader2 size={15} className="animate-spin" />}
                               {isEdit ? 'Update & Publish' : 'Publish Job'}

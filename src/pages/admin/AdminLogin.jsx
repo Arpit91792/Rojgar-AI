@@ -1,6 +1,4 @@
-// DEVELOPMENT ONLY
-// This login page uses local credential validation — no network request is made.
-// Replace with backend API authentication before production.
+// Admin login page — calls POST /api/auth/admin/login on the backend.
 
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -8,22 +6,16 @@ import { useAuth } from '../../context/AuthContext'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import logo from '../../assets/logo.jpeg'
 
-// DEVELOPMENT ONLY — default credentials pre-filled for convenience
-const DEV_EMAIL = ''
-const DEV_PASSWORD = ''
-
 const AdminLogin = () => {
       const { login, isAuthenticated, loading } = useAuth()
       const navigate = useNavigate()
 
-      // DEVELOPMENT ONLY — pre-fill credentials so login is one click
-      const [email, setEmail] = useState(DEV_EMAIL)
-      const [password, setPassword] = useState(DEV_PASSWORD)
+      const [email, setEmail] = useState('')
+      const [password, setPassword] = useState('')
       const [showPw, setShowPw] = useState(false)
       const [error, setError] = useState('')
       const [submitting, setSubmitting] = useState(false)
 
-      // Already logged in — go to dashboard
       useEffect(() => {
             if (!loading && isAuthenticated) {
                   navigate('/admin/dashboard', { replace: true })
@@ -41,12 +33,11 @@ const AdminLogin = () => {
 
             setSubmitting(true)
             try {
-                  // DEVELOPMENT ONLY — no network request, purely local validation
                   await login(email.trim(), password)
                   navigate('/admin/dashboard', { replace: true })
             } catch (err) {
-                  // Display the error from AuthContext — never "Network Error"
-                  setError(err?.message || 'Invalid email or password.')
+                  const msg = err?.response?.data?.message || err?.message || 'Invalid email or password.'
+                  setError(msg)
             } finally {
                   setSubmitting(false)
             }

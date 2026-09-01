@@ -1,9 +1,9 @@
-// PostDetail.jsx — Full detail page for any post type (job, internship, result, etc.)
-// Reads from localStorage via postService. No network request.
+// PostDetail.jsx — loads post from backend API by id (slug = id)
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import * as postService from '../services/postService'
+import { fetchPost } from '../services/api.js'
+import { normaliseJob } from '../services/api.js'
 import { recordView } from './Home'
 import {
       ArrowLeft, Building2, MapPin, Calendar, Clock, Users,
@@ -12,7 +12,6 @@ import {
       Globe, BookOpen, Award, Info
 } from 'lucide-react'
 
-// ── Category meta (icon + color) ─────────────────────────────────────────────
 const CAT_META = {
       GOVERNMENT_JOB: { label: 'Government Job', Icon: Building2 },
       PRIVATE_JOB: { label: 'Private Job', Icon: Briefcase },
@@ -22,16 +21,11 @@ const CAT_META = {
       ADMIT_CARD: { label: 'Admit Card', Icon: Award },
 }
 
-// Single blue color palette used everywhere
 const CLR = {
-      bg: 'bg-blue-600',
-      light: 'bg-blue-50',
-      text: 'text-blue-600',
-      border: 'border-blue-200',
-      badge: 'bg-blue-100 text-blue-700',
+      bg: 'bg-blue-600', light: 'bg-blue-50',
+      text: 'text-blue-600', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700',
 }
 
-// Back path for each category
 const CAT_BACK = {
       GOVERNMENT_JOB: '/government-jobs',
       PRIVATE_JOB: '/private-jobs',
@@ -60,42 +54,39 @@ const InfoRow = ({ icon: Icon, label, value, highlight }) => {
 }
 
 const PostDetail = () => {
-      const { slug } = useParams()
+      const { slug } = useParams()   // slug is the backend job id
       const navigate = useNavigate()
       const [post, setPost] = useState(null)
       const [notFound, setNotFound] = useState(false)
+      const [loading, setLoading] = useState(true)
 
       useEffect(() => {
-            try {
-                  const found = postService.getPostBySlug(slug)
-                  if (!found || found.status !== 'PUBLISHED') {
-                        setNotFound(true)
-                  } else {
-                        setPost(found)
-                        // Record this post as recently viewed for the Home page widget
-                        recordView(found.id)
-                  }
-            } catch {
-                  setNotFound(true)
-            }
+            setLoading(true)
+            setNotFound(false)
+            setPost(null)
+
+            fetchPost(slug)
+                  .then((res) => {
+                        const job = res.data
+                        if (!job || job.status !== 'PUBLISHED') {
+                              setNotFound(true)
+                        } else {
+                              const normalised = normaliseJob(job)
+                              setPost(normalised)
+                              recordView(normalised.id)
+                        }
+                  })
+                  .catch(() => setNotFound(true))
+                  .finally(() => setLoading(false))
       }, [slug])
 
-      // Sync with localStorage changes
-      useEffect(() => {
-            const refresh = () => {
-                  try {
-                        const found = postService.getPostBySlug(slug)
-                        if (found && found.status === 'PUBLISHED') setPost(found)
-                        else setNotFound(true)
-                  } catch { setNotFound(true) }
-            }
-            window.addEventListener('rojgar_storage_updated', refresh)
-            window.addEventListener('storage', refresh)
-            return () => {
-                  window.removeEventListener('rojgar_storage_updated', refresh)
-                  window.removeEventListener('storage', refresh)
-            }
-      }, [slug])
+      if (loading) {
+            return (
+                  <div className="min-h-[50vh] flex items-center justify-center">
+                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+            )
+      }
 
       if (notFound) {
             return (
@@ -115,13 +106,7 @@ const PostDetail = () => {
             )
       }
 
-      if (!post) {
-            return (
-                  <div className="min-h-[50vh] flex items-center justify-center">
-                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                  </div>
-            )
-      }
+      if (!post) return null
 
       const meta = CAT_META[post.category] || CAT_META.GOVERNMENT_JOB
       const clr = CLR
@@ -131,7 +116,7 @@ const PostDetail = () => {
       return (
             <div className="max-w-4xl mx-auto space-y-6 pb-12">
 
-                  {/* ── Breadcrumb ── */}
+                  {/* Breadcrumb */}
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                         <Link to="/" className="hover:text-blue-600 transition-colors">Home</Link>
                         <span>/</span>
@@ -140,9 +125,8 @@ const PostDetail = () => {
                         <span className="text-gray-800 font-medium truncate">{post.title}</span>
                   </div>
 
-                  {/* ── Hero card ── */}
+                  {/* Hero card */}
                   <div className={`rounded-2xl overflow-hidden border ${clr.border}`}>
-                        {/* Top banner */}
                         <div className={`${clr.bg} px-6 py-6 text-white`}>
                               <div className="flex items-start justify-between gap-4 flex-wrap">
                                     <div className="flex items-start gap-4">
@@ -155,13 +139,13 @@ const PostDetail = () => {
                                                 {post.department && <p className="text-white/60 text-xs mt-0.5">{post.department}</p>}
                                           </div>
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white`}>
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
                                           {meta.label}
                                     </span>
                               </div>
                         </div>
 
-                        {/* Quick stats row */}
+                        {/* Quick stats */}
                         <div className={`${clr.light} px-6 py-3 flex flex-wrap gap-4 text-sm border-b ${clr.border}`}>
                               {post.location && (
                                     <div className="flex items-center gap-1.5">
@@ -195,57 +179,36 @@ const PostDetail = () => {
                               )}
                         </div>
 
-                        {/* ── Action buttons ── */}
+                        {/* Actions */}
                         <div className="px-6 py-4 bg-white flex flex-wrap gap-3">
                               {post.applyLink ? (
-                                    <a
-                                          href={post.applyLink}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={`flex items-center gap-2 px-6 py-3 ${clr.bg} text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity`}
-                                    >
+                                    <a href={post.applyLink} target="_blank" rel="noopener noreferrer"
+                                          className={`flex items-center gap-2 px-6 py-3 ${clr.bg} text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity`}>
                                           Apply Now <ExternalLink size={15} />
                                     </a>
                               ) : (
-                                    <button
-                                          disabled
-                                          className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-semibold text-sm cursor-not-allowed"
-                                    >
+                                    <button disabled className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-semibold text-sm cursor-not-allowed">
                                           Application Link Not Available
                                     </button>
                               )}
-
                               {post.resultLink && (
-                                    <a
-                                          href={post.resultLink}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                                    >
+                                    <a href={post.resultLink} target="_blank" rel="noopener noreferrer"
+                                          className="flex items-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                                           <ExternalLink size={15} /> View Result
                                     </a>
                               )}
-
                               {post.officialWebsite && (
-                                    <a
-                                          href={post.officialWebsite}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                                    >
+                                    <a href={post.officialWebsite} target="_blank" rel="noopener noreferrer"
+                                          className="flex items-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                                           <Globe size={15} /> Official Website
                                     </a>
                               )}
                         </div>
                   </div>
 
-                  {/* ── Main grid ── */}
+                  {/* Main grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                        {/* ── Left: Description + Selection Process ── */}
                         <div className="lg:col-span-2 space-y-6">
-
-                              {/* Description */}
                               {post.description && (
                                     <div className="bg-white rounded-xl border p-6">
                                           <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -254,8 +217,6 @@ const PostDetail = () => {
                                           <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{post.description}</p>
                                     </div>
                               )}
-
-                              {/* Selection Process */}
                               {post.selectionProcess && (
                                     <div className="bg-white rounded-xl border p-6">
                                           <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -264,8 +225,6 @@ const PostDetail = () => {
                                           <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{post.selectionProcess}</p>
                                     </div>
                               )}
-
-                              {/* Skills */}
                               {post.skills && (
                                     <div className="bg-white rounded-xl border p-6">
                                           <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -273,45 +232,28 @@ const PostDetail = () => {
                                           </h2>
                                           <div className="flex flex-wrap gap-2">
                                                 {post.skills.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean).map((skill) => (
-                                                      <span key={skill} className={`px-3 py-1 rounded-full text-xs font-medium ${clr.badge}`}>
-                                                            {skill}
-                                                      </span>
+                                                      <span key={skill} className={`px-3 py-1 rounded-full text-xs font-medium ${clr.badge}`}>{skill}</span>
                                                 ))}
                                           </div>
                                     </div>
                               )}
-
-                              {/* Important Dates */}
                               {(post.applicationStartDate || post.lastDate || post.examDate || post.resultDate || post.releaseDate) && (
                                     <div className="bg-white rounded-xl border p-6">
                                           <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                                                 <Calendar size={18} className={clr.text} /> Important Dates
                                           </h2>
                                           <div className="space-y-0">
-                                                {post.applicationStartDate && (
-                                                      <InfoRow icon={Calendar} label="Application Start Date" value={fmt(post.applicationStartDate)} />
-                                                )}
-                                                {post.lastDate && (
-                                                      <InfoRow icon={Calendar} label="Last Date to Apply" value={fmt(post.lastDate)} highlight="text-red-600" />
-                                                )}
-                                                {post.examDate && (
-                                                      <InfoRow icon={Calendar} label="Exam Date" value={fmt(post.examDate)} />
-                                                )}
-                                                {post.resultDate && (
-                                                      <InfoRow icon={Calendar} label="Result Date" value={fmt(post.resultDate)} />
-                                                )}
-                                                {post.releaseDate && (
-                                                      <InfoRow icon={Calendar} label="Admit Card Release Date" value={fmt(post.releaseDate)} />
-                                                )}
-                                                {post.startTime && (
-                                                      <InfoRow icon={Clock} label="Start Time" value={post.startTime + (post.endTime ? ` – ${post.endTime}` : '')} />
-                                                )}
+                                                {post.applicationStartDate && <InfoRow icon={Calendar} label="Application Start Date" value={fmt(post.applicationStartDate)} />}
+                                                {post.lastDate && <InfoRow icon={Calendar} label="Last Date to Apply" value={fmt(post.lastDate)} highlight="text-red-600" />}
+                                                {post.examDate && <InfoRow icon={Calendar} label="Exam Date" value={fmt(post.examDate)} />}
+                                                {post.resultDate && <InfoRow icon={Calendar} label="Result Date" value={fmt(post.resultDate)} />}
+                                                {post.releaseDate && <InfoRow icon={Calendar} label="Admit Card Release Date" value={fmt(post.releaseDate)} />}
+                                                {post.startTime && <InfoRow icon={Clock} label="Start Time" value={post.startTime + (post.endTime ? ` – ${post.endTime}` : '')} />}
                                           </div>
                                     </div>
                               )}
                         </div>
 
-                        {/* ── Right: Key Details sidebar ── */}
                         <div className="space-y-6">
                               <div className="bg-white rounded-xl border p-5">
                                     <h3 className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Key Details</h3>
@@ -333,7 +275,6 @@ const PostDetail = () => {
                                     </div>
                               </div>
 
-                              {/* Links card */}
                               {(post.applyLink || post.officialWebsite || post.resultLink) && (
                                     <div className="bg-white rounded-xl border p-5">
                                           <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Important Links</h3>
@@ -360,21 +301,14 @@ const PostDetail = () => {
                                     </div>
                               )}
 
-                              {/* Published date */}
                               {post.publishedAt && (
-                                    <p className="text-xs text-gray-400 text-center">
-                                          Published on {fmt(post.publishedAt)}
-                                    </p>
+                                    <p className="text-xs text-gray-400 text-center">Published on {fmt(post.publishedAt)}</p>
                               )}
                         </div>
                   </div>
 
-                  {/* ── Back button ── */}
                   <div>
-                        <Link
-                              to={back}
-                              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                        >
+                        <Link to={back} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors">
                               <ArrowLeft size={16} /> Back to {meta.label}s
                         </Link>
                   </div>

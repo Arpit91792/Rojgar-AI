@@ -1,60 +1,46 @@
-// DEVELOPMENT ONLY
-// This local authentication is NOT secure for production.
-// Replace with backend authentication + HTTP-only cookies
-// before deploying the Admin Panel publicly.
-//
-// When connecting PostgreSQL + Express backend, replace the adminLogin function
-// with a real API call: axios.post('/api/auth/admin/login', { email, password })
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { adminLogin as apiAdminLogin, adminLogout as apiAdminLogout, getMe } from '../services/api.js'
 
-// DEVELOPMENT ONLY — Hardcoded dev credentials for local testing
-// Remove these before production and use backend authentication
-const DEV_EMAIL = 'at0585969@gmail.com'
-const DEV_PASSWORD = 'Arpit@9179'
-const SESSION_KEY = 'rojgar_admin_authenticated'
-
+const SESSION_KEY = 'admin_token'
 const AuthContext = createContext(null)
 
 export const AuthProvider = ({ children }) => {
+      const [admin, setAdmin] = useState(null)
       const [isAuthenticated, setIsAuthenticated] = useState(false)
       const [loading, setLoading] = useState(true)
 
-      // DEVELOPMENT ONLY — restore session from sessionStorage on mount
+      // Restore session on mount — verify token with backend
       useEffect(() => {
-            const stored = sessionStorage.getItem(SESSION_KEY)
-            if (stored === 'true') {
-                  setIsAuthenticated(true)
-            }
-            setLoading(false)
-      }, [])
+            const token = localStorage.getItem(SESSION_KEY)
+            if (!token) { setLoading(false); return }
 
-      // DEVELOPMENT ONLY — local credential check, no network request
-      // Replace this with: axios.post('/api/auth/admin/login', { email, password })
-      const login = useCallback((email, password) => {
-            return new Promise((resolve, reject) => {
-                  if (
-                        email.trim().toLowerCase() === DEV_EMAIL.toLowerCase() &&
-                        password === DEV_PASSWORD
-                  ) {
-                        // DEVELOPMENT ONLY — Replace with backend token/cookie handling before production
-                        sessionStorage.setItem(SESSION_KEY, 'true')
+            getMe()
+                  .then((res) => {
+                        const user = res.data
+                        setAdmin({ name: user.name, email: user.email, id: user.id, role: user.role })
                         setIsAuthenticated(true)
-                        resolve({ success: true })
-                  } else {
-                        reject(new Error('Invalid email or password.'))
-                  }
-            })
+                  })
+                  .catch(() => {
+                        localStorage.removeItem(SESSION_KEY)
+                  })
+                  .finally(() => setLoading(false))
       }, [])
 
-      const logout = useCallback(() => {
-            // DEVELOPMENT ONLY — Replace with: axios.post('/api/auth/logout') before production
-            sessionStorage.removeItem(SESSION_KEY)
+      const login = useCallback(async (email, password) => {
+            const res = await apiAdminLogin(email, password)
+            const { accessToken, user } = res.data
+            localStorage.setItem(SESSION_KEY, accessToken)
+            setAdmin({ name: user.name, email: user.email, id: user.id, role: user.role })
+            setIsAuthenticated(true)
+            return res
+      }, [])
+
+      const logout = useCallback(async () => {
+            try { await apiAdminLogout() } catch (_) { }
+            localStorage.removeItem(SESSION_KEY)
+            setAdmin(null)
             setIsAuthenticated(false)
       }, [])
-
-      // Expose `admin` object so existing AdminLayout doesn't break
-      const admin = isAuthenticated ? { name: 'Admin', email: DEV_EMAIL } : null
 
       return (
             <AuthContext.Provider value={{ admin, isAuthenticated, loading, login, logout }}>
