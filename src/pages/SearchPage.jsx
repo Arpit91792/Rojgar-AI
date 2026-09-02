@@ -77,7 +77,7 @@ const SearchPage = () => {
             setLoading(true)
             Promise.all(
                   TYPES.map((t) =>
-                        fetchPostsByType(t, { limit: 200, status: 'PUBLISHED' })
+                        fetchPostsByType(t, { limit: 100, status: 'PUBLISHED' })
                               .then((r) => (r.data || []).map(normaliseJob))
                               .catch(() => [])
                   )
