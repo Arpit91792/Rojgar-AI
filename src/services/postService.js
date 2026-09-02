@@ -39,7 +39,7 @@ export const STATUSES = {
 
 /** All posts — admin use (all statuses) */
 export const getPosts = async () => {
-  const res = await adminGetPosts({ limit: 200 })
+  const res = await adminGetPosts({ limit: 100 })
   return (res.data || []).map(normaliseJob)
 }
 
@@ -67,7 +67,7 @@ export const getPostBySlug = async (slug) => {
 /** Posts by category + optional status filter */
 export const getPostsByCategory = async (category, status = null) => {
   const type = CATEGORY_TO_TYPE[category] || category
-  const params = { type, limit: 200 }
+  const params = { type, limit: 100 }
   if (status) params.status = statusToBackend(status)
   else params.status = 'PUBLISHED'
   const res = await fetchPostsByType(type, params)
