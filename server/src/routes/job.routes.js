@@ -164,21 +164,16 @@ router.post('/', authenticate, authorize('ADMIN'), validate(jobSchema), async (r
                         applicationStart: new Date(req.body.applicationStart)
                   }),
 
-                  ...(req.body.lastDate
-                        ? {
-                              lastDate: new Date(req.body.lastDate)
-                        }
-                        : req.body.type === 'ADMIT_CARD' && req.body.examDate
-                              ? {
-                                    lastDate: new Date(req.body.examDate)
-                              }
-                              : {}),
+                  lastDate: req.body.lastDate
+                        ? new Date(req.body.lastDate)
+                        : req.body.examDate
+                              ? new Date(req.body.examDate)
+                              : new Date(),
 
                   ...(req.body.examDate && {
                         examDate: new Date(req.body.examDate)
                   })
             };
-
             const job = await prisma.job.create({
                   data: jobData,
                   select: {
@@ -314,7 +309,18 @@ router.get('/type/:type', validateQuery(jobQuerySchema), async (req, res) => {
             const { page, limit, search, sortBy, sortOrder } = req.query;
 
             // Validate job type
-            const validTypes = ['GOVERNMENT', 'PRIVATE', 'INTERNSHIP', 'SCHOLARSHIP', 'HACKATHON', 'PLACEMENT_DRIVE', 'COURSE'];
+            const validTypes = [
+                  'GOVERNMENT',
+                  'PRIVATE',
+                  'INTERNSHIP',
+                  'SCHOLARSHIP',
+                  'HACKATHON',
+                  'PLACEMENT_DRIVE',
+                  'COURSE',
+                  'TIME_TABLE',
+                  'RESULT',
+                  'ADMIT_CARD'
+            ];
             if (!validTypes.includes(type.toUpperCase())) {
                   return res.status(400).json({
                         status: 'error',
