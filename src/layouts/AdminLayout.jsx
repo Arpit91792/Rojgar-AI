@@ -6,7 +6,7 @@ import {
       Calendar, FileText, FileCheck, Bell, Settings,
       LogOut, Menu, X, ChevronLeft, ChevronRight
 } from 'lucide-react'
-import logo from '../assets/logo.jpeg'
+import logo from '../assets/logo.png'
 
 const NAV = [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },

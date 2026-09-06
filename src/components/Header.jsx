@@ -5,7 +5,7 @@ import {
       Building2, Briefcase, GraduationCap,
       Calendar, FileText, FileCheck, Sparkles
 } from 'lucide-react'
-import logo from '../assets/logo.jpeg'
+import logo from '../assets/logo.png'
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [

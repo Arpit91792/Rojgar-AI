@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import logo from '../../assets/logo.jpeg'
+import logo from '../../assets/logo.png'
 
 const AdminLogin = () => {
       const { login, isAuthenticated, loading } = useAuth()
