@@ -206,8 +206,8 @@ const AdminLayout = ({ children }) => {
                               )}
                         </header>
 
-                        {/* Page content — no padding for visual editor routes */}
-                        <main className={`flex-1 ${location.pathname.includes('/add') || location.pathname.includes('/edit') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6'}`}>
+                        {/* Page content */}
+                        <main className="flex-1 p-4 sm:p-6">
                               {children}
                         </main>
                   </div>
