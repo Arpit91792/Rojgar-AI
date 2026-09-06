@@ -6,6 +6,7 @@ import { fetchPost } from '../services/api.js'
 import { normaliseJob } from '../services/api.js'
 import { recordView } from './Home'
 import ContentRenderer from '../components/ContentRenderer.jsx'
+import PageRenderer from '../components/builder/PageRenderer.jsx'
 import {
       ArrowLeft, Building2, MapPin, Calendar, Clock, Users,
       Briefcase, GraduationCap, ExternalLink,
@@ -210,19 +211,25 @@ const PostDetail = () => {
                   {/* Main grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 space-y-6">
-                              {/* Content Blocks — new flexible system */}
+                              {/* Content Blocks — supports both new sections format and old blocks format */}
                               {post.contentBlocks && (() => {
-                                    try { return (JSON.parse(post.contentBlocks).blocks || []).length > 0 }
+                                    try {
+                                          const p = JSON.parse(post.contentBlocks)
+                                          return (p.sections || []).length > 0 || (p.blocks || []).length > 0
+                                    }
                                     catch { return false }
                               })() && (
                                           <div className="bg-white rounded-xl border p-6">
-                                                <ContentRenderer contentBlocks={post.contentBlocks} />
+                                                <PageRenderer contentBlocks={post.contentBlocks} />
                                           </div>
                                     )}
 
-                              {/* Legacy description — shown only when no content blocks */}
+                              {/* Legacy description — shown only when no content */}
                               {post.description && (() => {
-                                    try { return (JSON.parse(post.contentBlocks || '{"blocks":[]}').blocks || []).length === 0 }
+                                    try {
+                                          const p = JSON.parse(post.contentBlocks || '{"blocks":[]}')
+                                          return (p.blocks || []).length === 0 && (p.sections || []).length === 0
+                                    }
                                     catch { return true }
                               })() && (
                                           <div className="bg-white rounded-xl border p-6">

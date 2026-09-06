@@ -1,15 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
       LayoutDashboard, Building2, Briefcase, GraduationCap,
-      Calendar, FileText, FileCheck, Bell, Settings,
-      LogOut, Menu, X, ChevronLeft, ChevronRight
+      Calendar, FileText, FileCheck, Bell,
+      LogOut, Menu, X, ChevronLeft, ChevronRight, Layers
 } from 'lucide-react'
 import logo from '../assets/logo.png'
 
 const NAV = [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
+      { label: '✦ Page Builder', icon: Layers, to: '/admin/builder/new' },
       { label: 'Government Jobs', icon: Building2, to: '/admin/government-jobs' },
       { label: 'Private Jobs', icon: Briefcase, to: '/admin/private-jobs' },
       { label: 'Internships', icon: GraduationCap, to: '/admin/internships' },
