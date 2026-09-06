@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { fetchPost } from '../services/api.js'
 import { normaliseJob } from '../services/api.js'
 import { recordView } from './Home'
+import ContentRenderer from '../components/ContentRenderer.jsx'
 import {
       ArrowLeft, Building2, MapPin, Calendar, Clock, Users,
       Briefcase, GraduationCap, ExternalLink,
@@ -209,14 +210,28 @@ const PostDetail = () => {
                   {/* Main grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 space-y-6">
-                              {post.description && (
-                                    <div className="bg-white rounded-xl border p-6">
-                                          <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                                <Info size={18} className={clr.text} /> About this Post
-                                          </h2>
-                                          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{post.description}</p>
-                                    </div>
-                              )}
+                              {/* Content Blocks — new flexible system */}
+                              {post.contentBlocks && (() => {
+                                    try { return (JSON.parse(post.contentBlocks).blocks || []).length > 0 }
+                                    catch { return false }
+                              })() && (
+                                          <div className="bg-white rounded-xl border p-6">
+                                                <ContentRenderer contentBlocks={post.contentBlocks} />
+                                          </div>
+                                    )}
+
+                              {/* Legacy description — shown only when no content blocks */}
+                              {post.description && (() => {
+                                    try { return (JSON.parse(post.contentBlocks || '{"blocks":[]}').blocks || []).length === 0 }
+                                    catch { return true }
+                              })() && (
+                                          <div className="bg-white rounded-xl border p-6">
+                                                <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                                      <Info size={18} className={clr.text} /> About this Post
+                                                </h2>
+                                                <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{post.description}</p>
+                                          </div>
+                                    )}
                               {post.selectionProcess && (
                                     <div className="bg-white rounded-xl border p-6">
                                           <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">

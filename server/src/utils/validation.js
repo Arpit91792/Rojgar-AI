@@ -48,6 +48,7 @@ export const jobSchema = z.object({
             .nullable()
             .refine(v => !v || /^\d{4}-\d{2}-\d{2}$/.test(v) || !isNaN(Date.parse(v)), 'Invalid date'),
       description: z.string().optional().nullable(),
+      contentBlocks: z.string().optional().nullable(),
       officialWebsite: z.string().optional().nullable(),
       notificationPdf: z.string().optional().nullable(),
       applyLink: z.string().optional().nullable(),

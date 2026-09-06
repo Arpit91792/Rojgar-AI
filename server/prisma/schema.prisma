@@ -67,6 +67,7 @@ model Job {
   examDate         DateTime?
   description      String?
   selectionProcess String?
+  contentBlocks    String?   @default("{\"blocks\":[]}")
   officialWebsite  String?
   notificationPdf  String?
   applyLink        String?

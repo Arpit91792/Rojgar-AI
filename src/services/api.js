@@ -87,6 +87,8 @@ export const normaliseJob = (job) => {
             applicationStartDate: job.applicationStart || '',
             lastDate: job.lastDate ? job.lastDate.slice(0, 10) : '',
             examDate: job.examDate ? job.examDate.slice(0, 10) : '',
+            // Content blocks (new flexible content system)
+            contentBlocks: job.contentBlocks || '{"blocks":[]}',
             // Status
             status: statusToFrontend(job.status),
             // Meta
@@ -150,6 +152,7 @@ export const buildJobPayload = (formData, category, status) => {
             applyLink: formData.applyLink || undefined,
             status: statusToBackend(status),
             isFeatured: formData.isFeatured || false,
+            contentBlocks: formData.contentBlocks || '{"blocks":[]}',
       }
 }
 
@@ -202,6 +205,7 @@ export const parseJobToForm = (job) => {
             applicationStartDate: job.applicationStart ? job.applicationStart.slice(0, 10) : '',
             lastDate: job.lastDate ? job.lastDate.slice(0, 10) : '',
             examDate: job.examDate ? job.examDate.slice(0, 10) : '',
+            contentBlocks: job.contentBlocks || '{"blocks":[]}',
             ...extra,
       }
 }

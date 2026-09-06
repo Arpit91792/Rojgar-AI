@@ -113,6 +113,7 @@ router.get('/:id', async (req, res) => {
                         lastDate: true,
                         examDate: true,
                         description: true,
+                        contentBlocks: true,
                         officialWebsite: true,
                         notificationPdf: true,
                         applyLink: true,
@@ -156,6 +157,7 @@ router.get('/:id', async (req, res) => {
 // Create job (admin only)
 router.post('/', authenticate, authorize('ADMIN'), validate(jobSchema), async (req, res) => {
       try {
+            // Create job (with safe lastDate fallback for post types that don't need it)
             const jobData = {
                   ...req.body,
                   createdBy: req.user.id,
@@ -172,7 +174,10 @@ router.post('/', authenticate, authorize('ADMIN'), validate(jobSchema), async (r
 
                   ...(req.body.examDate && {
                         examDate: new Date(req.body.examDate)
-                  })
+                  }),
+
+                  // Store contentBlocks as-is (already a JSON string or null)
+                  contentBlocks: req.body.contentBlocks || '{"blocks":[]}'
             };
             const job = await prisma.job.create({
                   data: jobData,
