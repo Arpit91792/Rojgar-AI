@@ -5,8 +5,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { fetchPost } from '../services/api.js'
 import { normaliseJob } from '../services/api.js'
 import { recordView } from './Home'
+import PageRenderer from '../components/PageRenderer.jsx'
 import ContentRenderer from '../components/ContentRenderer.jsx'
-import PageRenderer from '../components/builder/PageRenderer.jsx'
 import {
       ArrowLeft, Building2, MapPin, Calendar, Clock, Users,
       Briefcase, GraduationCap, ExternalLink,
@@ -211,26 +211,38 @@ const PostDetail = () => {
                   {/* Main grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 space-y-6">
-                              {/* Content Blocks — supports both new sections format and old blocks format */}
+                              {/* ── New PageEditor format (has "elements" key) ── */}
                               {post.contentBlocks && (() => {
                                     try {
                                           const p = JSON.parse(post.contentBlocks)
-                                          return (p.sections || []).length > 0 || (p.blocks || []).length > 0
-                                    }
-                                    catch { return false }
+                                          return Array.isArray(p.elements) && p.elements.length > 0
+                                    } catch { return false }
                               })() && (
-                                          <div className="bg-white rounded-xl border p-6">
-                                                <PageRenderer contentBlocks={post.contentBlocks} />
+                                          <div className="bg-white rounded-xl border overflow-hidden">
+                                                <PageRenderer pageContent={post.contentBlocks} />
                                           </div>
                                     )}
 
-                              {/* Legacy description — shown only when no content */}
+                              {/* ── Old ContentBuilder format (has "blocks" key) ── */}
+                              {post.contentBlocks && (() => {
+                                    try {
+                                          const p = JSON.parse(post.contentBlocks)
+                                          return Array.isArray(p.blocks) && p.blocks.length > 0 && !p.elements
+                                    } catch { return false }
+                              })() && (
+                                          <div className="bg-white rounded-xl border p-6">
+                                                <ContentRenderer contentBlocks={post.contentBlocks} />
+                                          </div>
+                                    )}
+
+                              {/* ── Legacy description (no content blocks at all) ── */}
                               {post.description && (() => {
                                     try {
-                                          const p = JSON.parse(post.contentBlocks || '{"blocks":[]}')
-                                          return (p.blocks || []).length === 0 && (p.sections || []).length === 0
-                                    }
-                                    catch { return true }
+                                          const p = JSON.parse(post.contentBlocks || '{}')
+                                          const hasNew = Array.isArray(p.elements) && p.elements.length > 0
+                                          const hasOld = Array.isArray(p.blocks) && p.blocks.length > 0
+                                          return !hasNew && !hasOld
+                                    } catch { return true }
                               })() && (
                                           <div className="bg-white rounded-xl border p-6">
                                                 <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">

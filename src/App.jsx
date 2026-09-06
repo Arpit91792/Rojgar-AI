@@ -28,9 +28,6 @@ import AdminLogin from './pages/admin/AdminLogin'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminNotifications from './pages/admin/AdminNotifications'
 
-// Page Builder (no AdminLayout — uses its own full-screen layout)
-import PageBuilder from './pages/admin/PageBuilder'
-
 import {
       AdminGovernmentJobsList,
       AdminGovernmentJobsAdd,
@@ -199,24 +196,6 @@ function App() {
                                           <Route
                                                 path="/admin/notifications"
                                                 element={<AdminPage><AdminNotifications /></AdminPage>}
-                                          />
-
-                                          {/* ── PAGE BUILDER (full-screen, own layout) ── */}
-                                          <Route
-                                                path="/admin/builder/new"
-                                                element={
-                                                      <ProtectedAdminRoute>
-                                                            <PageBuilder />
-                                                      </ProtectedAdminRoute>
-                                                }
-                                          />
-                                          <Route
-                                                path="/admin/builder/:id/edit"
-                                                element={
-                                                      <ProtectedAdminRoute>
-                                                            <PageBuilder />
-                                                      </ProtectedAdminRoute>
-                                                }
                                           />
 
                                           {/* Catch-all for /admin/* unknown routes */}

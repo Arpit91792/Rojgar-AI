@@ -1,16 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
       LayoutDashboard, Building2, Briefcase, GraduationCap,
-      Calendar, FileText, FileCheck, Bell,
-      LogOut, Menu, X, ChevronLeft, ChevronRight, Layers
+      Calendar, FileText, FileCheck, Bell, Settings,
+      LogOut, Menu, X, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import logo from '../assets/logo.png'
 
 const NAV = [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
-      { label: '✦ Page Builder', icon: Layers, to: '/admin/builder/new' },
       { label: 'Government Jobs', icon: Building2, to: '/admin/government-jobs' },
       { label: 'Private Jobs', icon: Briefcase, to: '/admin/private-jobs' },
       { label: 'Internships', icon: GraduationCap, to: '/admin/internships' },
@@ -207,8 +206,8 @@ const AdminLayout = ({ children }) => {
                               )}
                         </header>
 
-                        {/* Page content */}
-                        <main className="flex-1 p-4 sm:p-6">
+                        {/* Page content — no padding for visual editor routes */}
+                        <main className={`flex-1 ${location.pathname.includes('/add') || location.pathname.includes('/edit') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6'}`}>
                               {children}
                         </main>
                   </div>
