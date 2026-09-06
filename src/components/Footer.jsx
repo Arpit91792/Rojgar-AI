@@ -40,7 +40,7 @@ const Footer = () => (
                         {/* Brand */}
                         <div className="lg:col-span-1">
                               <div className="flex items-center gap-3 mb-4">
-                                    <img src={logo} alt="Rojgar AI" className="h-11 w-auto object-contain" />
+                                    <img src={logo} alt="RozgarGrid AI" className="h-11 w-auto object-contain" />
                               </div>
                               <p className="text-slate-400 text-sm leading-relaxed mb-6">
                                     India's trusted platform for career opportunities — government jobs, private sector, internships &amp; more. Updated every day.
@@ -96,7 +96,7 @@ const Footer = () => (
                                     </li>
                                     <li className="flex items-center gap-3 text-slate-400 text-sm">
                                           <Mail size={15} className="flex-shrink-0 text-blue-400" />
-                                          <a href="mailto:support@rojgarai.com" className="hover:text-white transition-colors">support@rojgarai.com</a>
+                                          <a href="mailto:support@rozgargrid.ai" className="hover:text-white transition-colors">support@rozgargrid.ai</a>
                                     </li>
                               </ul>
 
@@ -114,7 +114,7 @@ const Footer = () => (
 
                   {/* Divider */}
                   <div className="border-t border-slate-800 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <p className="text-slate-500 text-xs">© 2026 Rojgar AI. All rights reserved.</p>
+                        <p className="text-slate-500 text-xs">© 2026 RozgarGrid AI. All rights reserved.</p>
                         <div className="flex gap-5 text-xs text-slate-500">
                               {['Privacy Policy', 'Terms of Service', 'Disclaimer'].map((t) => (
                                     <a key={t} href="#" className="hover:text-white transition-colors">{t}</a>

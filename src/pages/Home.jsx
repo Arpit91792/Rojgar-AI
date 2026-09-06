@@ -123,7 +123,7 @@ const HeroSearch = () => {
                   <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4 pointer-events-none" />
                   <div className="relative px-5 py-6 sm:px-8 sm:py-8 text-center">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold text-blue-100 mb-3">
-                              <Sparkles size={11} className="text-yellow-300" /> India's #1 Job Portal
+                              <Sparkles size={11} className="text-yellow-300" /> RozgarGrid AI
                         </div>
                         <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight mb-2">
                               Find Your Dream{' '}

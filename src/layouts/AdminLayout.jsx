@@ -83,13 +83,13 @@ const AdminLayout = ({ children }) => {
                         {collapsed && !isMobile ? (
                               <img
                                     src={logo}
-                                    alt="Rojgar AI"
+                                    alt="RozgarGrid AI"
                                     className="h-8 w-8 object-contain rounded"
                               />
                         ) : (
                               <img
                                     src={logo}
-                                    alt="Rojgar AI"
+                                    alt="RozgarGrid AI"
                                     className="h-9 w-auto object-contain flex-shrink-0"
                               />
                         )}
@@ -199,7 +199,7 @@ const AdminLayout = ({ children }) => {
                                     <div className="hidden sm:flex items-center gap-2">
                                           <img
                                                 src={logo}
-                                                alt="Rojgar AI"
+                                                alt="RozgarGrid AI"
                                                 className="h-8 w-auto object-contain"
                                           />
                                     </div>

@@ -60,7 +60,7 @@ const AdminLogin = () => {
                               <div className="text-center mb-8">
                                     <img
                                           src={logo}
-                                          alt="Rojgar AI"
+                                          alt="RozgarGrid AI"
                                           className="h-16 w-auto object-contain mx-auto mb-3"
                                     />
                                     <p className="text-gray-500 mt-1 text-sm font-medium">Admin Panel</p>
@@ -136,7 +136,7 @@ const AdminLogin = () => {
                         </div>
 
                         <p className="text-center text-xs text-gray-400 mt-6">
-                              © 2024 Rojgar AI. Admin access only.
+                              © 2026 RozgarGrid AI. Admin access only.
                         </p>
                   </div>
             </div>

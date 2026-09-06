@@ -63,7 +63,7 @@ export const DesktopSidebar = () => (
             <div className="mx-3 mt-auto mb-4 p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
                   <div className="flex items-center gap-2 mb-2">
                         <Sparkles size={14} className="text-yellow-300" />
-                        <span className="text-xs font-bold">Rojgar AI</span>
+                        <span className="text-xs font-bold">RozgarGrid AI</span>
                   </div>
                   <p className="text-xs text-blue-100 leading-relaxed">
                         Find your dream job across India. Updated daily.
@@ -127,7 +127,7 @@ const Header = () => {
                                           {isMobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
                                     </button>
                                     <Link to="/" className="flex items-center gap-2.5">
-                                          <img src={logo} alt="Rojgar AI" className="h-9 w-auto object-contain" />
+                                          <img src={logo} alt="RozgarGrid AI" className="h-9 w-auto object-contain" />
                                     </Link>
                               </div>
 
@@ -222,7 +222,7 @@ const Header = () => {
                         {/* Drawer header */}
                         <div className="flex items-center justify-between px-4 h-16 border-b border-slate-100 flex-shrink-0">
                               <Link to="/" onClick={close} className="flex items-center gap-2">
-                                    <img src={logo} alt="Rojgar AI" className="h-8 w-auto object-contain" />
+                                    <img src={logo} alt="RozgarGrid AI" className="h-8 w-auto object-contain" />
                               </Link>
                               <button onClick={close} aria-label="Close" className="p-2 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors">
                                     <X size={20} />
@@ -240,7 +240,7 @@ const Header = () => {
                         </nav>
 
                         <div className="p-4 border-t border-slate-100 text-xs text-slate-400 flex-shrink-0">
-                              © 2026 Rojgar AI · All rights reserved
+                              © 2026 RozgarGrid AI · All rights reserved
                         </div>
                   </div>
             </>
