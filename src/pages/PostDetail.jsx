@@ -212,8 +212,14 @@ const PostDetail = () => {
                         <div className="lg:col-span-2 space-y-6">
                               {/* Content Blocks — new flexible system */}
                               {post.contentBlocks && (() => {
-                                    try { return (JSON.parse(post.contentBlocks).blocks || []).length > 0 }
-                                    catch { return false }
+                                    try {
+                                          const parsed = JSON.parse(post.contentBlocks)
+                                          // New rawHtml format
+                                          if (parsed.rawHtml) return true
+                                          // Legacy blocks format
+                                          return (parsed.blocks || []).length > 0
+                                    }
+                                    catch { return !!post.contentBlocks }
                               })() && (
                                           <div className="bg-white rounded-xl border p-6">
                                                 <ContentRenderer contentBlocks={post.contentBlocks} />
@@ -222,7 +228,11 @@ const PostDetail = () => {
 
                               {/* Legacy description — shown only when no content blocks */}
                               {post.description && (() => {
-                                    try { return (JSON.parse(post.contentBlocks || '{"blocks":[]}').blocks || []).length === 0 }
+                                    try {
+                                          const parsed = JSON.parse(post.contentBlocks || '{"blocks":[]}')
+                                          if (parsed.rawHtml) return false
+                                          return (parsed.blocks || []).length === 0
+                                    }
                                     catch { return true }
                               })() && (
                                           <div className="bg-white rounded-xl border p-6">

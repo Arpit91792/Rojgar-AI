@@ -21,9 +21,9 @@ export const loginSchema = z.object({
 
 // Job / Post validation schema
 export const jobSchema = z.object({
-      title: z.string().min(3, 'Title must be at least 3 characters'),
+      title: z.string().min(1, 'Title is required'),
       type: z.enum(ALL_JOB_TYPES),
-      organization: z.string().min(1, 'Organization is required'),
+      organization: z.string().optional().nullable().default(''),
       department: z.string().optional().nullable(),
       // location & qualification optional to support TIME_TABLE/RESULT/ADMIT_CARD
       location: z.string().optional().nullable().default(''),
@@ -70,8 +70,8 @@ export const jobQuerySchema = z.object({
 
 // Result validation (kept for legacy /api/results route)
 export const resultSchema = z.object({
-      title: z.string().min(3, 'Title must be at least 3 characters'),
-      organization: z.string().min(2, 'Organization must be at least 2 characters'),
+      title: z.string().min(1, 'Title is required'),
+      organization: z.string().optional().nullable().default(''),
       description: z.string().optional(),
       resultUrl: z.string().optional().nullable(),
       pdfUrl: z.string().optional().nullable()
@@ -79,8 +79,8 @@ export const resultSchema = z.object({
 
 // TimeTable validation (kept for legacy /api/timetable route)
 export const timetableSchema = z.object({
-      title: z.string().min(3, 'Title must be at least 3 characters'),
-      organization: z.string().min(2, 'Organization must be at least 2 characters'),
+      title: z.string().min(1, 'Title is required'),
+      organization: z.string().optional().nullable().default(''),
       description: z.string().optional(),
       pdfUrl: z.string().optional().nullable(),
       startDate: z.string().optional().nullable(),

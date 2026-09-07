@@ -135,7 +135,7 @@ export const buildJobPayload = (formData, category, status) => {
       return {
             title: formData.title,
             type,
-            organization: formData.organization,
+            organization: formData.organization || '',
             department: formData.department || undefined,
             location: formData.location || '',
             qualification: formData.qualification || '',
