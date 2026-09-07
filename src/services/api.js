@@ -24,9 +24,13 @@ adminApi.interceptors.request.use((config) => {
 })
 
 // On 401 → clear token + redirect to admin login
+// IMPORTANT: Only trigger logout on an explicit HTTP 401 from the server.
+// Network errors, 500/502/503/504 (Render cold-start), and timeouts must
+// NOT clear the token — the admin should stay logged in.
 adminApi.interceptors.response.use(
       (res) => res,
       (err) => {
+            // err.response is undefined for network errors / timeouts
             if (err.response?.status === 401) {
                   localStorage.removeItem('admin_token')
                   window.location.href = '/admin'
