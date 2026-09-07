@@ -122,7 +122,8 @@ router.get('/:id', async (req, res) => {
                         views: true,
                         applications: true,
                         createdAt: true,
-                        updatedAt: true
+                        updatedAt: true,
+                        createdBy: true,   // admin user id
                   }
             });
 
@@ -131,6 +132,18 @@ router.get('/:id', async (req, res) => {
                         status: 'error',
                         message: 'Job not found'
                   });
+            }
+
+            // Fetch creator's name (non-critical — fail gracefully)
+            let createdByName = null;
+            if (job.createdBy) {
+                  try {
+                        const creator = await prisma.user.findUnique({
+                              where: { id: job.createdBy },
+                              select: { name: true }
+                        });
+                        createdByName = creator?.name || null;
+                  } catch (_) { /* ignore */ }
             }
 
             // Increment view count
@@ -143,7 +156,7 @@ router.get('/:id', async (req, res) => {
 
             res.json({
                   status: 'success',
-                  data: job
+                  data: { ...job, createdByName }
             });
       } catch (error) {
             console.error('Get job error:', error);

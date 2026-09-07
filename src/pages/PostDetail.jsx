@@ -1,10 +1,10 @@
-// PostDetail.jsx — shows only title + admin-written content
+// PostDetail.jsx — title + content + share + posted-by
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { fetchPost, normaliseJob } from '../services/api.js'
 import { recordView } from './Home'
 import ContentRenderer from '../components/ContentRenderer.jsx'
-import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Loader2, Share2, Check, UserCircle2 } from 'lucide-react'
 
 const CAT_BACK = {
       GOVERNMENT_JOB: '/government-jobs',
@@ -21,6 +21,7 @@ const PostDetail = () => {
       const [post, setPost] = useState(null)
       const [notFound, setNotFound] = useState(false)
       const [loading, setLoading] = useState(true)
+      const [copied, setCopied] = useState(false)
 
       useEffect(() => {
             setLoading(true)
@@ -41,6 +42,18 @@ const PostDetail = () => {
                   .catch(() => setNotFound(true))
                   .finally(() => setLoading(false))
       }, [slug])
+
+      const handleShare = () => {
+            const url = window.location.href
+            if (navigator.share) {
+                  navigator.share({ title: post?.title || 'Post', url })
+            } else {
+                  navigator.clipboard?.writeText(url).then(() => {
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2500)
+                  })
+            }
+      }
 
       if (loading) {
             return (
@@ -72,19 +85,19 @@ const PostDetail = () => {
 
       const back = CAT_BACK[post.category] || '/'
 
-      // Determine if there is actual content to render
       const hasContent = (() => {
             if (!post.contentBlocks) return false
             try {
                   const p = JSON.parse(post.contentBlocks)
                   if (p.rawHtml) return p.rawHtml.trim().length > 0
                   return (p.blocks || []).length > 0
-            } catch {
-                  return false
-            }
+            } catch { return false }
       })()
 
       const hasLegacyDesc = !hasContent && !!post.description?.trim()
+
+      const fmtDate = (d) =>
+            d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null
 
       return (
             <div className="max-w-3xl mx-auto pb-12 space-y-6">
@@ -104,14 +117,13 @@ const PostDetail = () => {
 
                   <div className="border-t border-gray-100" />
 
-                  {/* Admin-written content — exactly what was typed */}
+                  {/* Content */}
                   {hasContent && (
                         <div className="bg-white rounded-xl border border-gray-100 p-6">
                               <ContentRenderer contentBlocks={post.contentBlocks} />
                         </div>
                   )}
 
-                  {/* Legacy plain-text description fallback */}
                   {hasLegacyDesc && (
                         <div className="bg-white rounded-xl border border-gray-100 p-6">
                               <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
@@ -120,10 +132,50 @@ const PostDetail = () => {
                         </div>
                   )}
 
-                  {/* Nothing written yet */}
                   {!hasContent && !hasLegacyDesc && (
                         <p className="text-gray-400 text-sm italic">No content available for this post.</p>
                   )}
+
+                  {/* ── Footer bar: Share + Posted by ── */}
+                  <div className="border-t border-gray-100 pt-5 flex items-center justify-between gap-4 flex-wrap">
+
+                        {/* Posted by */}
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <UserCircle2 size={18} className="text-gray-400 flex-shrink-0" />
+                              <span>
+                                    Posted by{' '}
+                                    <span className="font-semibold text-gray-700">
+                                          {post.createdByName || 'Admin'}
+                                    </span>
+                                    {post.createdAt && (
+                                          <span className="text-gray-400 ml-1 font-normal">
+                                                · {fmtDate(post.createdAt)}
+                                          </span>
+                                    )}
+                              </span>
+                        </div>
+
+                        {/* Share button */}
+                        <button
+                              onClick={handleShare}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${copied
+                                          ? 'bg-green-50 border-green-300 text-green-700'
+                                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                                    }`}
+                        >
+                              {copied ? (
+                                    <>
+                                          <Check size={15} className="text-green-600" />
+                                          Link Copied!
+                                    </>
+                              ) : (
+                                    <>
+                                          <Share2 size={15} />
+                                          Share
+                                    </>
+                              )}
+                        </button>
+                  </div>
 
             </div>
       )

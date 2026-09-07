@@ -97,6 +97,8 @@ export const normaliseJob = (job) => {
             createdAt: job.createdAt,
             updatedAt: job.updatedAt,
             publishedAt: job.publishedAt,
+            // Author
+            createdByName: job.createdByName || null,
       }
 }
 
