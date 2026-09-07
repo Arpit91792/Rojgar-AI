@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-
+import sitemapRoutes from "./routes/sitemap.routes.js";
 // Load environment variables
 dotenv.config();
 
