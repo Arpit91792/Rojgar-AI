@@ -59,8 +59,15 @@ const PostDetail = () => {
                         setPost(normalised)
                         recordView(normalised.id)
 
-                        // Update canonical <link> for SEO
+                        // ── SEO head tags ────────────────────────────────────
                         const canonical = `${window.location.origin}/posts/${normalised.slug}`
+
+                        // <title>
+                        document.title = normalised.seoTitle?.trim()
+                              ? normalised.seoTitle.trim()
+                              : `${normalised.title} | RozgarGrid AI`
+
+                        // <link rel="canonical">
                         let linkEl = document.querySelector('link[rel="canonical"]')
                         if (!linkEl) {
                               linkEl = document.createElement('link')
@@ -69,8 +76,29 @@ const PostDetail = () => {
                         }
                         linkEl.href = canonical
 
-                        // Update <title> for SEO
-                        document.title = `${normalised.title} | RozgarGrid AI`
+                        // <meta name="description">
+                        let metaDesc = document.querySelector('meta[name="description"]')
+                        if (!metaDesc) {
+                              metaDesc = document.createElement('meta')
+                              metaDesc.name = 'description'
+                              document.head.appendChild(metaDesc)
+                        }
+                        metaDesc.content = normalised.metaDescription?.trim() || ''
+
+                        // Open Graph tags (bonus — same data)
+                        const setMeta = (prop, content, attr = 'property') => {
+                              let el = document.querySelector(`meta[${attr}="${prop}"]`)
+                              if (!el) {
+                                    el = document.createElement('meta')
+                                    el.setAttribute(attr, prop)
+                                    document.head.appendChild(el)
+                              }
+                              el.content = content
+                        }
+                        setMeta('og:title', document.title)
+                        setMeta('og:description', normalised.metaDescription?.trim() || '')
+                        setMeta('og:url', canonical)
+                        setMeta('og:type', 'article')
 
                   } catch {
                         setNotFound(true)

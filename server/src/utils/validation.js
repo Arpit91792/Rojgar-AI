@@ -54,7 +54,12 @@ export const jobSchema = z.object({
       notificationPdf: z.string().optional().nullable(),
       applyLink: z.string().optional().nullable(),
       status: z.enum(['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'EXPIRED']).optional().default('DRAFT'),
-      isFeatured: z.boolean().optional().default(false)
+      isFeatured: z.boolean().optional().default(false),
+      // SEO fields
+      seoTitle: z.string().max(60, 'SEO title must be 60 characters or fewer').optional().nullable(),
+      metaDescription: z.string().max(160, 'Meta description must be 160 characters or fewer').optional().nullable(),
+      primaryKeyword: z.string().optional().nullable(),
+      secondaryKeywords: z.string().optional().nullable(),
 });
 
 export const jobUpdateSchema = jobSchema.partial();

@@ -1,5 +1,5 @@
 /**
- * AdminPostForm — Clean post editor with live preview + SEO slug field.
+ * AdminPostForm — Clean post editor with live preview + SEO slug + SEO settings.
  */
 import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -8,7 +8,7 @@ import { adminGetPost, parseJobToForm } from '../../services/api.js'
 import * as postService from '../../services/postService'
 import ContentBuilder from '../../components/admin/ContentBuilder.jsx'
 import ContentRenderer from '../../components/ContentRenderer.jsx'
-import { AlertCircle, Loader2, Eye, EyeOff, Link2 } from 'lucide-react'
+import { AlertCircle, Loader2, Eye, EyeOff, Link2, Search, X } from 'lucide-react'
 
 // ── Category derived from URL path ─────────────────────────────────────────
 const PATH_TO_CATEGORY = {
@@ -33,6 +33,115 @@ function generateSlug(title) {
             .replace(/^-+|-+$/g, '')
 }
 
+// ── Character counter ───────────────────────────────────────────────────────
+const CharCount = ({ value, max }) => {
+      const len = (value || '').length
+      const pct = len / max
+      const color =
+            pct >= 1 ? 'text-red-600' :
+                  pct >= 0.85 ? 'text-amber-500' :
+                        'text-gray-400'
+      return (
+            <span className={`text-xs tabular-nums ${color}`}>
+                  {len} / {max}
+            </span>
+      )
+}
+
+// ── Tag-style secondary-keywords input ─────────────────────────────────────
+const TagInput = ({ value, onChange }) => {
+      const [input, setInput] = useState('')
+
+      // Parse comma-separated string → array of tags
+      const tags = value ? value.split(',').map(t => t.trim()).filter(Boolean) : []
+
+      const addTag = (raw) => {
+            const newTag = raw.trim()
+            if (!newTag) return
+            if (!tags.includes(newTag)) {
+                  const updated = [...tags, newTag].join(', ')
+                  onChange(updated)
+            }
+            setInput('')
+      }
+
+      const removeTag = (tag) => {
+            const updated = tags.filter(t => t !== tag).join(', ')
+            onChange(updated)
+      }
+
+      const handleKeyDown = (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault()
+                  addTag(input)
+            } else if (e.key === 'Backspace' && !input && tags.length) {
+                  removeTag(tags[tags.length - 1])
+            }
+      }
+
+      return (
+            <div className="flex flex-wrap gap-1.5 items-center min-h-[38px] bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-colors">
+                  {tags.map(tag => (
+                        <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-medium px-2 py-1 rounded-md"
+                        >
+                              {tag}
+                              <button
+                                    type="button"
+                                    onClick={() => removeTag(tag)}
+                                    className="hover:text-blue-900 transition-colors"
+                                    aria-label={`Remove keyword ${tag}`}
+                              >
+                                    <X size={11} />
+                              </button>
+                        </span>
+                  ))}
+                  <input
+                        type="text"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        onBlur={() => addTag(input)}
+                        placeholder={tags.length === 0 ? 'Type keyword and press Enter or comma…' : ''}
+                        className="flex-1 min-w-[160px] text-sm text-gray-700 bg-transparent outline-none border-none py-0.5"
+                  />
+            </div>
+      )
+}
+
+// ── SEO score preview pill ──────────────────────────────────────────────────
+const SeoScorePill = ({ seoTitle, metaDescription, primaryKeyword, slug }) => {
+      let score = 0
+      if (seoTitle?.trim()) score += 25
+      if (metaDescription?.trim()) score += 25
+      if (primaryKeyword?.trim()) score += 25
+      if (slug?.trim()) score += 25
+
+      const label =
+            score >= 100 ? 'Great' :
+                  score >= 75 ? 'Good' :
+                        score >= 50 ? 'Okay' :
+                              score >= 25 ? 'Basic' : 'Missing'
+
+      const color =
+            score >= 100 ? 'bg-green-100 text-green-700 border-green-200' :
+                  score >= 75 ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                        score >= 50 ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              'bg-red-100 text-red-600 border-red-200'
+
+      return (
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${color}`}>
+                  <span
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ background: 'currentColor', opacity: 0.7 }}
+                  />
+                  SEO: {label} ({score}%)
+            </span>
+      )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 const AdminPostForm = ({ pathSegment, postId }) => {
       const navigate = useNavigate()
       const { createPost, updatePost } = useData()
@@ -40,21 +149,29 @@ const AdminPostForm = ({ pathSegment, postId }) => {
       const category = PATH_TO_CATEGORY[pathSegment] || 'GOVERNMENT_JOB'
       const isEdit = !!postId
 
+      // ── core fields
       const [title, setTitle] = useState('')
       const [slug, setSlug] = useState('')
       const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
       const [contentHtml, setContent] = useState('')
+
+      // ── SEO fields
+      const [seoTitle, setSeoTitle] = useState('')
+      const [metaDescription, setMetaDescription] = useState('')
+      const [primaryKeyword, setPrimaryKeyword] = useState('')
+      const [secondaryKeywords, setSecondaryKeywords] = useState('')
+
+      // ── UI state
       const [showPreview, setShowPreview] = useState(false)
+      const [seoOpen, setSeoOpen] = useState(true)
       const [submitting, setSubmitting] = useState(false)
       const [loadingPost, setLoadingPost] = useState(false)
       const [error, setError] = useState('')
       const [success, setSuccess] = useState('')
 
-      // When editing an existing post, keep track of its original slug so we
-      // don't overwrite a user-set slug on re-render.
       const originalSlugRef = useRef(null)
 
-      // Load existing post when editing
+      // ── Load existing post when editing ───────────────────────────────────
       useEffect(() => {
             if (!isEdit) return
             setLoadingPost(true)
@@ -63,11 +180,10 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         const parsed = parseJobToForm(res.data)
                         setTitle(parsed.title || '')
 
-                        // Set slug from backend (may be null for very old posts)
                         const existingSlug = res.data?.slug || ''
                         setSlug(existingSlug)
                         originalSlugRef.current = existingSlug
-                        if (existingSlug) setSlugManuallyEdited(true) // lock auto-generation for edit
+                        if (existingSlug) setSlugManuallyEdited(true)
 
                         const raw = parsed.contentBlocks || ''
                         try {
@@ -76,42 +192,40 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         } catch {
                               setContent(raw)
                         }
+
+                        // SEO fields
+                        setSeoTitle(res.data?.seoTitle || '')
+                        setMetaDescription(res.data?.metaDescription || '')
+                        setPrimaryKeyword(res.data?.primaryKeyword || '')
+                        setSecondaryKeywords(res.data?.secondaryKeywords || '')
                   })
                   .catch(() => setError('Post not found or failed to load.'))
                   .finally(() => setLoadingPost(false))
       }, [postId, isEdit])
 
-      // Auto-generate slug from title (only when not manually edited)
+      // ── Title → auto-slug ─────────────────────────────────────────────────
       const handleTitleChange = (e) => {
-            const newTitle = e.target.value
-            setTitle(newTitle)
-            if (!slugManuallyEdited) {
-                  setSlug(generateSlug(newTitle))
-            }
+            const v = e.target.value
+            setTitle(v)
+            if (!slugManuallyEdited) setSlug(generateSlug(v))
       }
 
       const handleSlugChange = (e) => {
-            // Let admin type freely; normalise on blur
             setSlug(e.target.value)
             setSlugManuallyEdited(true)
       }
-
-      const handleSlugBlur = () => {
-            // Normalise on blur so the stored value is always URL-safe
-            const normalised = generateSlug(slug)
-            setSlug(normalised)
-      }
-
+      const handleSlugBlur = () => setSlug(generateSlug(slug))
       const handleResetSlug = () => {
             setSlug(generateSlug(title))
             setSlugManuallyEdited(false)
       }
 
+      // ── Submit ────────────────────────────────────────────────────────────
       const handleSubmit = async (status) => {
             setError('')
             setSuccess('')
             if (!title.trim()) { setError('Title is required.'); return }
-            if (!slug.trim()) { setError('Slug is required. It will be generated from the title.'); return }
+            if (!slug.trim()) { setError('Slug is required — it is auto-generated from the title.'); return }
 
             setSubmitting(true)
             try {
@@ -121,6 +235,11 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         category,
                         status,
                         contentBlocks: JSON.stringify({ rawHtml: contentHtml }),
+                        // SEO
+                        seoTitle: seoTitle.trim() || undefined,
+                        metaDescription: metaDescription.trim() || undefined,
+                        primaryKeyword: primaryKeyword.trim() || undefined,
+                        secondaryKeywords: secondaryKeywords.trim() || undefined,
                   }
                   if (isEdit) {
                         await updatePost(postId, payload)
@@ -162,8 +281,8 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                               type="button"
                               onClick={() => setShowPreview(p => !p)}
                               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showPreview
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                          ? 'bg-blue-600 text-white border-blue-600'
+                                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                                     }`}
                         >
                               {showPreview ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -189,6 +308,7 @@ const AdminPostForm = ({ pathSegment, postId }) => {
 
                         {/* ── EDITOR COLUMN ── */}
                         <div className="space-y-4">
+
                               {/* Title */}
                               <input
                                     type="text"
@@ -230,6 +350,140 @@ const AdminPostForm = ({ pathSegment, postId }) => {
 
                               {/* Rich text editor */}
                               <ContentBuilder value={contentHtml} onChange={setContent} />
+
+                              {/* ══════════════════════════════════════════════════════
+                                  SEO SETTINGS — sits between editor and action bar
+                              ══════════════════════════════════════════════════════ */}
+                              <div className="border border-gray-200 rounded-xl overflow-hidden">
+
+                                    {/* Collapsible header */}
+                                    <button
+                                          type="button"
+                                          onClick={() => setSeoOpen(o => !o)}
+                                          className="w-full flex items-center justify-between px-5 py-3.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                                          aria-expanded={seoOpen}
+                                    >
+                                          <div className="flex items-center gap-2.5">
+                                                <Search size={15} className="text-gray-500" />
+                                                <span className="text-sm font-semibold text-gray-700">SEO Settings</span>
+                                                <SeoScorePill
+                                                      seoTitle={seoTitle}
+                                                      metaDescription={metaDescription}
+                                                      primaryKeyword={primaryKeyword}
+                                                      slug={slug}
+                                                />
+                                          </div>
+                                          <span className="text-gray-400 text-lg leading-none select-none">
+                                                {seoOpen ? '−' : '+'}
+                                          </span>
+                                    </button>
+
+                                    {seoOpen && (
+                                          <div className="px-5 py-5 space-y-5 bg-white">
+
+                                                {/* ── SEO Title ── */}
+                                                <div>
+                                                      <div className="flex items-center justify-between mb-1.5">
+                                                            <label className="text-sm font-medium text-gray-700">
+                                                                  SEO Title
+                                                            </label>
+                                                            <CharCount value={seoTitle} max={60} />
+                                                      </div>
+                                                      <input
+                                                            type="text"
+                                                            value={seoTitle}
+                                                            onChange={e => setSeoTitle(e.target.value)}
+                                                            maxLength={60}
+                                                            placeholder="India Post GDS Recruitment 2026 – 23,757 Posts, Apply Online"
+                                                            className="w-full text-sm text-gray-800 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors placeholder-gray-300"
+                                                      />
+                                                      <p className="mt-1 text-xs text-gray-400">
+                                                            Used as the browser tab title and Google search headline. Keep it under 60 characters.
+                                                      </p>
+
+                                                      {/* Google SERP preview */}
+                                                      {(seoTitle || title) && (
+                                                            <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                                                                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
+                                                                        Search result preview
+                                                                  </p>
+                                                                  <p className="text-[#1a0dab] text-base font-medium leading-snug truncate hover:underline cursor-pointer">
+                                                                        {seoTitle || title}
+                                                                  </p>
+                                                                  <p className="text-[#006621] text-xs mt-0.5 truncate">
+                                                                        rozgargrid-ai.vercel.app/posts/{slug || 'post-slug'}
+                                                                  </p>
+                                                                  {metaDescription && (
+                                                                        <p className="text-[#545454] text-sm mt-1 leading-snug line-clamp-2">
+                                                                              {metaDescription}
+                                                                        </p>
+                                                                  )}
+                                                            </div>
+                                                      )}
+                                                </div>
+
+                                                <div className="border-t border-gray-100" />
+
+                                                {/* ── Meta Description ── */}
+                                                <div>
+                                                      <div className="flex items-center justify-between mb-1.5">
+                                                            <label className="text-sm font-medium text-gray-700">
+                                                                  Meta Description
+                                                            </label>
+                                                            <CharCount value={metaDescription} max={160} />
+                                                      </div>
+                                                      <textarea
+                                                            value={metaDescription}
+                                                            onChange={e => setMetaDescription(e.target.value)}
+                                                            maxLength={160}
+                                                            rows={3}
+                                                            placeholder="India Post GDS Recruitment 2026 for 23,757 posts. Check eligibility, age limit, application fee, important dates, vacancy details, selection process and apply online."
+                                                            className="w-full text-sm text-gray-800 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none placeholder-gray-300"
+                                                      />
+                                                      <p className="mt-1 text-xs text-gray-400">
+                                                            Shown below the title in search results. Keep it under 160 characters.
+                                                      </p>
+                                                </div>
+
+                                                <div className="border-t border-gray-100" />
+
+                                                {/* ── Primary Keyword ── */}
+                                                <div>
+                                                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                                            Primary Keyword
+                                                      </label>
+                                                      <input
+                                                            type="text"
+                                                            value={primaryKeyword}
+                                                            onChange={e => setPrimaryKeyword(e.target.value)}
+                                                            placeholder="India Post GDS Recruitment 2026"
+                                                            className="w-full text-sm text-gray-800 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors placeholder-gray-300"
+                                                      />
+                                                      <p className="mt-1 text-xs text-gray-400">
+                                                            The main keyword this post targets. Used for internal SEO tracking only — not added to the page HTML.
+                                                      </p>
+                                                </div>
+
+                                                <div className="border-t border-gray-100" />
+
+                                                {/* ── Secondary Keywords ── */}
+                                                <div>
+                                                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                                            Secondary Keywords
+                                                      </label>
+                                                      <TagInput
+                                                            value={secondaryKeywords}
+                                                            onChange={setSecondaryKeywords}
+                                                      />
+                                                      <p className="mt-1.5 text-xs text-gray-400">
+                                                            Type a keyword and press <kbd className="bg-gray-100 border border-gray-200 px-1 rounded text-[10px]">Enter</kbd> or <kbd className="bg-gray-100 border border-gray-200 px-1 rounded text-[10px]">,</kbd> to add. Click × to remove. Stored comma-separated; used for SEO analysis only.
+                                                      </p>
+                                                </div>
+
+                                          </div>
+                                    )}
+                              </div>
+                              {/* ══ end SEO settings ══ */}
 
                               {/* Action bar */}
                               <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-200">

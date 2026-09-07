@@ -99,6 +99,11 @@ export const normaliseJob = (job) => {
             publishedAt: job.publishedAt,
             // Author
             createdByName: job.createdByName || null,
+            // SEO
+            seoTitle: job.seoTitle || '',
+            metaDescription: job.metaDescription || '',
+            primaryKeyword: job.primaryKeyword || '',
+            secondaryKeywords: job.secondaryKeywords || '',
       }
 }
 
@@ -156,6 +161,11 @@ export const buildJobPayload = (formData, category, status) => {
             status: statusToBackend(status),
             isFeatured: formData.isFeatured || false,
             contentBlocks: formData.contentBlocks || '{"blocks":[]}',
+            // SEO fields
+            seoTitle: formData.seoTitle || undefined,
+            metaDescription: formData.metaDescription || undefined,
+            primaryKeyword: formData.primaryKeyword || undefined,
+            secondaryKeywords: formData.secondaryKeywords || undefined,
       }
 }
 
@@ -210,6 +220,10 @@ export const parseJobToForm = (job) => {
             examDate: job.examDate ? job.examDate.slice(0, 10) : '',
             contentBlocks: job.contentBlocks || '{"blocks":[]}',
             slug: job.slug || '',
+            seoTitle: job.seoTitle || '',
+            metaDescription: job.metaDescription || '',
+            primaryKeyword: job.primaryKeyword || '',
+            secondaryKeywords: job.secondaryKeywords || '',
             ...extra,
       }
 }

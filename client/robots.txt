@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rozgargrid-ai.vercel.app/sitemap.xml
