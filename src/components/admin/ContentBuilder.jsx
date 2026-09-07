@@ -1,20 +1,16 @@
 /**
- * ContentBuilder — Admin-only flexible content editor.
- * Renders a list of blocks (text, heading, table, image).
- * Users NEVER see this component — only ContentRenderer.
+ * ContentBuilder — Simple rich-text document editor.
+ * One contenteditable area with a full formatting toolbar.
+ * Supports: bold, italic, underline, color, headings,
+ * lists, alignment, links (with custom label), and tables.
  */
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useRef, useState, useCallback, useEffect } from 'react'
 import {
-      Plus, Trash2, ChevronUp, ChevronDown, Type,
-      Table2, Image, Heading, AlignLeft, Bold, Italic,
-      Underline, List, ListOrdered, Link2, AlignCenter,
-      AlignRight, X, Check
+      Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
+      List, ListOrdered, Link2, Table2, Palette, ChevronDown, X, Check
 } from 'lucide-react'
 
-// ── ID generator ──────────────────────────────────────────────────────────────
-const uid = () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-
-// ── DOMPurify-lite: strip script/event handlers from HTML ─────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const sanitize = (html) => {
       if (!html) return ''
       return html
@@ -24,364 +20,48 @@ const sanitize = (html) => {
             .replace(/javascript:/gi, '')
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Rich Text Toolbar
-// ══════════════════════════════════════════════════════════════════════════════
-const ToolbarBtn = ({ onClick, title, active, children }) => (
+// ── Toolbar button ────────────────────────────────────────────────────────────
+const Btn = ({ onClick, title, active, children, className = '' }) => (
       <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); onClick() }}
             title={title}
-            className={`p-1.5 rounded text-sm transition-colors ${active ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`p-1.5 rounded transition-colors text-sm
+      ${active ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}
+      ${className}`}
       >
             {children}
       </button>
 )
 
-const RichTextToolbar = ({ editorRef }) => {
-      const exec = (cmd, val = null) => {
-            editorRef.current?.focus()
-            document.execCommand(cmd, false, val)
-      }
+const Sep = () => <div className="w-px h-5 bg-gray-300 mx-0.5 self-center" />
 
-      const insertLink = () => {
-            const url = prompt('Enter URL:')
-            if (url) exec('createLink', url)
-      }
-
-      return (
-            <div className="flex flex-wrap gap-0.5 p-2 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-                  <ToolbarBtn onClick={() => exec('bold')} title="Bold"><Bold size={14} /></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('italic')} title="Italic"><Italic size={14} /></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('underline')} title="Underline"><Underline size={14} /></ToolbarBtn>
-                  <div className="w-px bg-gray-300 mx-1" />
-                  <ToolbarBtn onClick={() => exec('formatBlock', 'h1')} title="Heading 1"><span className="text-xs font-bold">H1</span></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('formatBlock', 'h2')} title="Heading 2"><span className="text-xs font-bold">H2</span></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('formatBlock', 'h3')} title="Heading 3"><span className="text-xs font-bold">H3</span></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('formatBlock', 'p')} title="Paragraph"><span className="text-xs">P</span></ToolbarBtn>
-                  <div className="w-px bg-gray-300 mx-1" />
-                  <ToolbarBtn onClick={() => exec('insertUnorderedList')} title="Bullet list"><List size={14} /></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('insertOrderedList')} title="Numbered list"><ListOrdered size={14} /></ToolbarBtn>
-                  <div className="w-px bg-gray-300 mx-1" />
-                  <ToolbarBtn onClick={() => exec('justifyLeft')} title="Align left"><AlignLeft size={14} /></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('justifyCenter')} title="Align center"><AlignCenter size={14} /></ToolbarBtn>
-                  <ToolbarBtn onClick={() => exec('justifyRight')} title="Align right"><AlignRight size={14} /></ToolbarBtn>
-                  <div className="w-px bg-gray-300 mx-1" />
-                  <ToolbarBtn onClick={insertLink} title="Insert link"><Link2 size={14} /></ToolbarBtn>
-            </div>
-      )
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Text Block
-// ══════════════════════════════════════════════════════════════════════════════
-const TextBlock = ({ block, onChange }) => {
-      const editorRef = useRef(null)
-
-      const handleInput = () => {
-            const html = editorRef.current?.innerHTML || ''
-            onChange({ ...block, content: sanitize(html) })
-      }
-
-      return (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <RichTextToolbar editorRef={editorRef} />
-                  <div
-                        ref={editorRef}
-                        contentEditable
-                        suppressContentEditableWarning
-                        onInput={handleInput}
-                        dangerouslySetInnerHTML={{ __html: block.content || '' }}
-                        className="min-h-[100px] p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
-                        style={{ lineHeight: '1.6' }}
-                  />
-            </div>
-      )
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Heading Block
-// ══════════════════════════════════════════════════════════════════════════════
-const HeadingBlock = ({ block, onChange }) => (
-      <div className="space-y-2">
-            <div className="flex gap-2">
-                  {[1, 2, 3].map((lvl) => (
-                        <button
-                              key={lvl}
-                              type="button"
-                              onClick={() => onChange({ ...block, level: lvl })}
-                              className={`px-2.5 py-1 rounded text-xs font-bold border transition-colors ${block.level === lvl ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-                        >
-                              H{lvl}
-                        </button>
-                  ))}
-            </div>
-            <input
-                  type="text"
-                  value={block.content || ''}
-                  onChange={(e) => onChange({ ...block, content: e.target.value })}
-                  placeholder={`Heading ${block.level || 2} text…`}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-      </div>
-)
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Table Block
-// ══════════════════════════════════════════════════════════════════════════════
-const TableBlock = ({ block, onChange }) => {
-      const cols = block.columns || ['Field', 'Value']
-      const rows = block.rows || [['', '']]
-
-      const setCell = (ri, ci, val) => {
-            const newRows = rows.map((r, i) => i === ri ? r.map((c, j) => j === ci ? val : c) : r)
-            onChange({ ...block, rows: newRows })
-      }
-      const setHeader = (ci, val) => {
-            const newCols = cols.map((c, i) => i === ci ? val : c)
-            onChange({ ...block, columns: newCols })
-      }
-      const addRow = () => onChange({ ...block, rows: [...rows, cols.map(() => '')] })
-      const delRow = (ri) => onChange({ ...block, rows: rows.filter((_, i) => i !== ri) })
-      const addCol = () => {
-            onChange({ ...block, columns: [...cols, `Col ${cols.length + 1}`], rows: rows.map((r) => [...r, '']) })
-      }
-      const delCol = (ci) => {
-            onChange({ ...block, columns: cols.filter((_, i) => i !== ci), rows: rows.map((r) => r.filter((_, i) => i !== ci)) })
-      }
-
-      return (
-            <div className="space-y-3">
-                  <div className="overflow-x-auto rounded-lg border border-gray-200">
-                        <table className="w-full text-sm">
-                              <thead>
-                                    <tr className="bg-gray-50">
-                                          {cols.map((col, ci) => (
-                                                <th key={ci} className="border border-gray-200 p-0">
-                                                      <div className="flex items-center">
-                                                            <input
-                                                                  value={col}
-                                                                  onChange={(e) => setHeader(ci, e.target.value)}
-                                                                  className="flex-1 px-2 py-1.5 bg-transparent font-semibold text-gray-700 text-xs focus:outline-none focus:bg-blue-50"
-                                                                  placeholder={`Column ${ci + 1}`}
-                                                            />
-                                                            {cols.length > 1 && (
-                                                                  <button type="button" onClick={() => delCol(ci)} className="px-1 text-gray-400 hover:text-red-500">
-                                                                        <X size={12} />
-                                                                  </button>
-                                                            )}
-                                                      </div>
-                                                </th>
-                                          ))}
-                                          <th className="border border-gray-200 p-1 w-8">
-                                                <button type="button" onClick={addCol} title="Add column" className="text-blue-500 hover:text-blue-700 text-xs font-bold">+</button>
-                                          </th>
-                                    </tr>
-                              </thead>
-                              <tbody>
-                                    {rows.map((row, ri) => (
-                                          <tr key={ri} className="hover:bg-gray-50">
-                                                {row.map((cell, ci) => (
-                                                      <td key={ci} className="border border-gray-200 p-0">
-                                                            <input
-                                                                  value={cell}
-                                                                  onChange={(e) => setCell(ri, ci, e.target.value)}
-                                                                  className="w-full px-2 py-1.5 bg-transparent text-gray-800 text-xs focus:outline-none focus:bg-blue-50"
-                                                                  placeholder="…"
-                                                            />
-                                                      </td>
-                                                ))}
-                                                <td className="border border-gray-200 p-1 w-8">
-                                                      {rows.length > 1 && (
-                                                            <button type="button" onClick={() => delRow(ri)} className="text-gray-400 hover:text-red-500">
-                                                                  <X size={12} />
-                                                            </button>
-                                                      )}
-                                                </td>
-                                          </tr>
-                                    ))}
-                              </tbody>
-                        </table>
-                  </div>
-                  <button type="button" onClick={addRow}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-                        <Plus size={13} /> Add Row
-                  </button>
-            </div>
-      )
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Image Block
-// ══════════════════════════════════════════════════════════════════════════════
-const ImageBlock = ({ block, onChange }) => {
-      const fileRef = useRef(null)
-
-      const handleFile = (e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            // Validate: image only
-            if (!file.type.startsWith('image/')) {
-                  alert('Only image files are allowed.')
-                  return
-            }
-            if (file.size > 5 * 1024 * 1024) {
-                  alert('Image must be under 5 MB.')
-                  return
-            }
-            const reader = new FileReader()
-            reader.onload = (ev) => onChange({ ...block, url: ev.target.result, fileName: file.name })
-            reader.readAsDataURL(file)
-      }
-
-      return (
-            <div className="space-y-3">
-                  {block.url ? (
-                        <div className="relative">
-                              <img src={block.url} alt={block.alt || 'Preview'} className="max-h-56 rounded-lg border border-gray-200 object-contain w-full bg-gray-50" />
-                              <button type="button" onClick={() => onChange({ ...block, url: '', fileName: '' })}
-                                    className="absolute top-2 right-2 p-1 bg-white rounded-full shadow text-red-500 hover:text-red-700">
-                                    <X size={14} />
-                              </button>
-                        </div>
-                  ) : (
-                        <div
-                              onClick={() => fileRef.current?.click()}
-                              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                        >
-                              <Image size={28} className="mx-auto text-gray-400 mb-2" />
-                              <p className="text-sm text-gray-500">Click to upload image</p>
-                              <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — max 5 MB</p>
-                              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-                        </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                        <input
-                              type="text"
-                              value={block.caption || ''}
-                              onChange={(e) => onChange({ ...block, caption: e.target.value })}
-                              placeholder="Caption (optional)"
-                              className="px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                              type="text"
-                              value={block.alt || ''}
-                              onChange={(e) => onChange({ ...block, alt: e.target.value })}
-                              placeholder="Alt text (optional)"
-                              className="px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                  </div>
-                  {/* Also allow URL input */}
-                  <input
-                        type="url"
-                        value={block.url?.startsWith('data:') ? '' : (block.url || '')}
-                        onChange={(e) => onChange({ ...block, url: e.target.value })}
-                        placeholder="Or paste image URL…"
-                        className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-            </div>
-      )
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Block Wrapper (card + controls)
-// ══════════════════════════════════════════════════════════════════════════════
-const BLOCK_ICONS = { text: AlignLeft, heading: Heading, table: Table2, image: Image }
-const BLOCK_LABELS = { text: 'Text', heading: 'Heading', table: 'Table', image: 'Image' }
-
-const BlockCard = ({ block, index, total, onUpdate, onDelete, onMoveUp, onMoveDown }) => {
-      const Icon = BLOCK_ICONS[block.type] || AlignLeft
-
-      return (
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                  {/* Block header */}
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                              <Icon size={15} className="text-blue-500" />
-                              {BLOCK_LABELS[block.type]}
-                        </div>
-                        <div className="flex items-center gap-1">
-                              <button type="button" onClick={onMoveUp} disabled={index === 0}
-                                    title="Move up"
-                                    className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 disabled:opacity-30 transition-colors">
-                                    <ChevronUp size={15} />
-                              </button>
-                              <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-                                    title="Move down"
-                                    className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 disabled:opacity-30 transition-colors">
-                                    <ChevronDown size={15} />
-                              </button>
-                              <button type="button" onClick={onDelete}
-                                    title="Delete block"
-                                    className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                                    <Trash2 size={15} />
-                              </button>
-                        </div>
-                  </div>
-                  {/* Block content */}
-                  <div className="p-4">
-                        {block.type === 'text' && <TextBlock block={block} onChange={onUpdate} />}
-                        {block.type === 'heading' && <HeadingBlock block={block} onChange={onUpdate} />}
-                        {block.type === 'table' && <TableBlock block={block} onChange={onUpdate} />}
-                        {block.type === 'image' && <ImageBlock block={block} onChange={onUpdate} />}
-                  </div>
-            </div>
-      )
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Add Block Menu
-// ══════════════════════════════════════════════════════════════════════════════
-const ADD_TYPES = [
-      { type: 'text', icon: AlignLeft, label: 'Text', desc: 'Rich paragraph' },
-      { type: 'heading', icon: Heading, label: 'Heading', desc: 'H1 / H2 / H3' },
-      { type: 'table', icon: Table2, label: 'Table', desc: 'Rows & columns' },
-      { type: 'image', icon: Image, label: 'Image', desc: 'Upload or URL' },
+// ── Text color picker ─────────────────────────────────────────────────────────
+const COLORS = [
+      '#000000', '#374151', '#ef4444', '#f97316', '#eab308',
+      '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff',
 ]
 
-const AddBlockMenu = ({ onAdd }) => {
+const ColorPicker = ({ onColor }) => {
       const [open, setOpen] = useState(false)
-
-      const add = (type) => {
-            const base = { id: uid(), type }
-            const defaults = {
-                  text: { content: '' },
-                  heading: { content: '', level: 2 },
-                  table: { columns: ['Field', 'Details'], rows: [['', ''], ['', '']] },
-                  image: { url: '', alt: '', caption: '' },
-            }
-            onAdd({ ...base, ...defaults[type] })
-            setOpen(false)
-      }
-
       return (
             <div className="relative">
-                  <button
-                        type="button"
-                        onClick={() => setOpen((o) => !o)}
-                        className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-blue-300 text-blue-600 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-semibold w-full justify-center"
-                  >
-                        <Plus size={16} /> Add Content Block
-                  </button>
+                  <Btn onClick={() => setOpen(o => !o)} title="Text color">
+                        <Palette size={14} />
+                  </Btn>
                   {open && (
                         <>
                               <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-                              <div className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-xl shadow-xl border border-gray-200 p-2 z-20 grid grid-cols-2 gap-2">
-                                    {ADD_TYPES.map(({ type, icon: Icon, label, desc }) => (
+                              <div className="absolute top-full mt-1 left-0 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-20 grid grid-cols-5 gap-1 w-28">
+                                    {COLORS.map(c => (
                                           <button
-                                                key={type}
+                                                key={c}
                                                 type="button"
-                                                onClick={() => add(type)}
-                                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-50 text-left transition-colors"
-                                          >
-                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                      <Icon size={16} className="text-blue-600" />
-                                                </div>
-                                                <div>
-                                                      <p className="text-sm font-semibold text-gray-800">{label}</p>
-                                                      <p className="text-xs text-gray-500">{desc}</p>
-                                                </div>
-                                          </button>
+                                                onMouseDown={(e) => { e.preventDefault(); onColor(c); setOpen(false) }}
+                                                className="w-5 h-5 rounded border border-gray-300 hover:scale-110 transition-transform"
+                                                style={{ backgroundColor: c }}
+                                                title={c}
+                                          />
                                     ))}
                               </div>
                         </>
@@ -390,66 +70,312 @@ const AddBlockMenu = ({ onAdd }) => {
       )
 }
 
+// ── Link modal ────────────────────────────────────────────────────────────────
+const LinkModal = ({ onInsert, onClose }) => {
+      const [url, setUrl] = useState('https://')
+      const [label, setLabel] = useState('')
+      return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                  <div className="bg-white rounded-xl shadow-2xl p-6 w-80 space-y-4">
+                        <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-gray-800 text-sm">Insert Link</h3>
+                              <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700">
+                                    <X size={16} />
+                              </button>
+                        </div>
+                        <div className="space-y-3">
+                              <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Button / Link Label</label>
+                                    <input
+                                          autoFocus
+                                          value={label}
+                                          onChange={e => setLabel(e.target.value)}
+                                          placeholder="e.g. Apply Now"
+                                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                              </div>
+                              <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">URL</label>
+                                    <input
+                                          value={url}
+                                          onChange={e => setUrl(e.target.value)}
+                                          placeholder="https://example.com"
+                                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                              </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                              <button type="button" onClick={onClose}
+                                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                                    Cancel
+                              </button>
+                              <button
+                                    type="button"
+                                    onClick={() => { if (url) onInsert(url, label || url) }}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium"
+                              >
+                                    <Check size={13} /> Insert
+                              </button>
+                        </div>
+                  </div>
+            </div>
+      )
+}
+
+// ── Table insert dialog ───────────────────────────────────────────────────────
+const TableModal = ({ onInsert, onClose }) => {
+      const [rows, setRows] = useState(3)
+      const [cols, setCols] = useState(2)
+      return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                  <div className="bg-white rounded-xl shadow-2xl p-6 w-64 space-y-4">
+                        <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-gray-800 text-sm">Insert Table</h3>
+                              <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700">
+                                    <X size={16} />
+                              </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Rows</label>
+                                    <input type="number" min={1} max={20} value={rows}
+                                          onChange={e => setRows(Number(e.target.value))}
+                                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                              </div>
+                              <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Columns</label>
+                                    <input type="number" min={1} max={10} value={cols}
+                                          onChange={e => setCols(Number(e.target.value))}
+                                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                              </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                              <button type="button" onClick={onClose}
+                                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                                    Cancel
+                              </button>
+                              <button type="button"
+                                    onClick={() => onInsert(rows, cols)}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium">
+                                    <Check size={13} /> Insert
+                              </button>
+                        </div>
+                  </div>
+            </div>
+      )
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
-// ContentBuilder — main export
+// Main ContentBuilder
 // ══════════════════════════════════════════════════════════════════════════════
 /**
  * Props:
- *   value: string  — JSON string like '{"blocks":[...]}'
- *   onChange: (jsonString) => void
+ *   value: string  — raw HTML string
+ *   onChange: (html: string) => void
  */
 const ContentBuilder = ({ value, onChange }) => {
-      const parsed = (() => {
-            try { return JSON.parse(value || '{"blocks":[]}') } catch { return { blocks: [] } }
-      })()
-      const blocks = parsed.blocks || []
+      const editorRef = useRef(null)
+      const [showLink, setShowLink] = useState(false)
+      const [showTable, setShowTable] = useState(false)
+      // Track saved selection for link/table insert after modal opens
+      const savedRange = useRef(null)
 
-      const emit = useCallback((newBlocks) => {
-            onChange(JSON.stringify({ blocks: newBlocks }))
-      }, [onChange])
+      // Sync value → editor on first mount only
+      useEffect(() => {
+            if (editorRef.current && editorRef.current.innerHTML !== (value || '')) {
+                  editorRef.current.innerHTML = value || ''
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [])
 
-      const addBlock = (block) => emit([...blocks, block])
+      const exec = useCallback((cmd, val = null) => {
+            editorRef.current?.focus()
+            document.execCommand(cmd, false, val)
+      }, [])
 
-      const updateBlock = (id, updated) =>
-            emit(blocks.map((b) => b.id === id ? updated : b))
-
-      const deleteBlock = (id) => emit(blocks.filter((b) => b.id !== id))
-
-      const moveUp = (index) => {
-            if (index === 0) return
-            const nb = [...blocks]
-                  ;[nb[index - 1], nb[index]] = [nb[index], nb[index - 1]]
-            emit(nb)
+      const handleInput = () => {
+            const html = editorRef.current?.innerHTML || ''
+            onChange(sanitize(html))
       }
 
-      const moveDown = (index) => {
-            if (index === blocks.length - 1) return
-            const nb = [...blocks]
-                  ;[nb[index], nb[index + 1]] = [nb[index + 1], nb[index]]
-            emit(nb)
+      const saveSelection = () => {
+            const sel = window.getSelection()
+            if (sel && sel.rangeCount > 0) {
+                  savedRange.current = sel.getRangeAt(0).cloneRange()
+            }
+      }
+
+      const restoreSelection = () => {
+            const sel = window.getSelection()
+            if (savedRange.current && sel) {
+                  sel.removeAllRanges()
+                  sel.addRange(savedRange.current)
+            }
+      }
+
+      const openLinkModal = () => {
+            saveSelection()
+            setShowLink(true)
+      }
+
+      const openTableModal = () => {
+            saveSelection()
+            setShowTable(true)
+      }
+
+      const insertLink = (url, label) => {
+            setShowLink(false)
+            editorRef.current?.focus()
+            restoreSelection()
+            const sel = window.getSelection()
+            // If text is selected, wrap it; otherwise insert the label
+            if (sel && sel.toString().trim()) {
+                  document.execCommand('createLink', false, url)
+            } else {
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.target = '_blank'
+                  a.rel = 'noopener noreferrer'
+                  a.textContent = label
+                  a.className = 'text-blue-600 underline'
+                  const range = sel?.getRangeAt(0)
+                  if (range) {
+                        range.deleteContents()
+                        range.insertNode(a)
+                        range.setStartAfter(a)
+                        range.collapse(true)
+                        sel.removeAllRanges()
+                        sel.addRange(range)
+                  }
+            }
+            handleInput()
+      }
+
+      const insertTable = (rows, cols) => {
+            setShowTable(false)
+            editorRef.current?.focus()
+            restoreSelection()
+
+            // Build table HTML
+            const headerCells = Array.from({ length: cols }, (_, i) =>
+                  `<th style="border:1px solid #d1d5db;padding:6px 10px;background:#f9fafb;font-weight:600;text-align:left;">Column ${i + 1}</th>`
+            ).join('')
+            const dataCells = Array.from({ length: cols }, () =>
+                  `<td style="border:1px solid #d1d5db;padding:6px 10px;">&nbsp;</td>`
+            ).join('')
+            const dataRows = Array.from({ length: rows - 1 }, () => `<tr>${dataCells}</tr>`).join('')
+
+            const tableHtml = `
+      <table style="border-collapse:collapse;width:100%;margin:8px 0;">
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>${dataRows || `<tr>${dataCells}</tr>`}</tbody>
+      </table>
+      <p><br></p>
+    `
+            document.execCommand('insertHTML', false, tableHtml)
+            handleInput()
       }
 
       return (
-            <div className="space-y-3">
-                  {blocks.length === 0 && (
-                        <div className="text-center py-8 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-xl">
-                              No content yet. Click "Add Content Block" below to start.
-                        </div>
-                  )}
-                  {blocks.map((block, index) => (
-                        <BlockCard
-                              key={block.id}
-                              block={block}
-                              index={index}
-                              total={blocks.length}
-                              onUpdate={(updated) => updateBlock(block.id, updated)}
-                              onDelete={() => deleteBlock(block.id)}
-                              onMoveUp={() => moveUp(index)}
-                              onMoveDown={() => moveDown(index)}
+            <>
+                  {showLink && (
+                        <LinkModal
+                              onInsert={insertLink}
+                              onClose={() => setShowLink(false)}
                         />
-                  ))}
-                  <AddBlockMenu onAdd={addBlock} />
-            </div>
+                  )}
+                  {showTable && (
+                        <TableModal
+                              onInsert={insertTable}
+                              onClose={() => setShowTable(false)}
+                        />
+                  )}
+
+                  <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                        {/* Toolbar */}
+                        <div className="flex flex-wrap items-center gap-0.5 p-2 bg-gray-50 border-b border-gray-200">
+                              {/* Text style */}
+                              <Btn onClick={() => exec('bold')} title="Bold (Ctrl+B)"><Bold size={14} /></Btn>
+                              <Btn onClick={() => exec('italic')} title="Italic (Ctrl+I)"><Italic size={14} /></Btn>
+                              <Btn onClick={() => exec('underline')} title="Underline (Ctrl+U)"><Underline size={14} /></Btn>
+                              <ColorPicker onColor={(c) => exec('foreColor', c)} />
+
+                              <Sep />
+
+                              {/* Headings */}
+                              <Btn onClick={() => exec('formatBlock', 'h1')} title="Heading 1">
+                                    <span className="text-xs font-bold">H1</span>
+                              </Btn>
+                              <Btn onClick={() => exec('formatBlock', 'h2')} title="Heading 2">
+                                    <span className="text-xs font-bold">H2</span>
+                              </Btn>
+                              <Btn onClick={() => exec('formatBlock', 'h3')} title="Heading 3">
+                                    <span className="text-xs font-bold">H3</span>
+                              </Btn>
+                              <Btn onClick={() => exec('formatBlock', 'p')} title="Paragraph">
+                                    <span className="text-xs">P</span>
+                              </Btn>
+
+                              <Sep />
+
+                              {/* Lists */}
+                              <Btn onClick={() => exec('insertUnorderedList')} title="Bullet list"><List size={14} /></Btn>
+                              <Btn onClick={() => exec('insertOrderedList')} title="Numbered list"><ListOrdered size={14} /></Btn>
+
+                              <Sep />
+
+                              {/* Alignment */}
+                              <Btn onClick={() => exec('justifyLeft')} title="Align left"><AlignLeft size={14} /></Btn>
+                              <Btn onClick={() => exec('justifyCenter')} title="Align center"><AlignCenter size={14} /></Btn>
+                              <Btn onClick={() => exec('justifyRight')} title="Align right"><AlignRight size={14} /></Btn>
+
+                              <Sep />
+
+                              {/* Link */}
+                              <Btn onClick={openLinkModal} title="Insert link / button">
+                                    <Link2 size={14} />
+                              </Btn>
+
+                              {/* Table */}
+                              <Btn onClick={openTableModal} title="Insert table">
+                                    <Table2 size={14} />
+                              </Btn>
+                        </div>
+
+                        {/* Editable area */}
+                        <div
+                              ref={editorRef}
+                              contentEditable
+                              suppressContentEditableWarning
+                              onInput={handleInput}
+                              className="min-h-[400px] p-4 text-sm text-gray-800 focus:outline-none"
+                              style={{
+                                    lineHeight: '1.75',
+                                    fontFamily: 'inherit',
+                              }}
+                              data-placeholder="Start writing your post content here..."
+                        />
+                  </div>
+
+                  {/* Placeholder CSS */}
+                  <style>{`
+        [data-placeholder]:empty:before {
+          content: attr(data-placeholder);
+          color: #9ca3af;
+          pointer-events: none;
+        }
+        [contenteditable] h1 { font-size: 1.75rem; font-weight: 700; margin: 0.5em 0; }
+        [contenteditable] h2 { font-size: 1.35rem; font-weight: 700; margin: 0.5em 0; }
+        [contenteditable] h3 { font-size: 1.1rem;  font-weight: 600; margin: 0.4em 0; }
+        [contenteditable] ul { list-style: disc;    padding-left: 1.5em; }
+        [contenteditable] ol { list-style: decimal; padding-left: 1.5em; }
+        [contenteditable] a  { color: #2563eb; text-decoration: underline; }
+        [contenteditable] table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+        [contenteditable] th,
+        [contenteditable] td { border: 1px solid #d1d5db; padding: 6px 10px; }
+        [contenteditable] th { background: #f9fafb; font-weight: 600; }
+      `}</style>
+            </>
       )
 }
 

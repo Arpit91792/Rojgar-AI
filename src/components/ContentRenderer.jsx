@@ -103,7 +103,9 @@ const ImageBlock = ({ block }) => {
 // ── ContentRenderer ───────────────────────────────────────────────────────────
 /**
  * Props:
- *   contentBlocks: string  — JSON string '{"blocks":[...]}'
+ *   contentBlocks: string  — JSON string '{"blocks":[...]}' (legacy)
+ *                            or '{"rawHtml":"..."}' (new rich-text editor)
+ *                            or raw HTML string
  */
 const ContentRenderer = ({ contentBlocks }) => {
       if (!contentBlocks) return null
@@ -112,9 +114,31 @@ const ContentRenderer = ({ contentBlocks }) => {
       try {
             parsed = JSON.parse(contentBlocks)
       } catch {
-            return null
+            // Not JSON — treat as raw HTML
+            parsed = null
       }
 
+      // New format: { rawHtml: "..." }
+      if (parsed?.rawHtml !== undefined) {
+            if (!parsed.rawHtml) return null
+            return (
+                  <div
+                        className="prose prose-sm max-w-none text-gray-700 leading-relaxed
+                          [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h1]:mt-4 [&_h1]:mb-2
+                          [&_h2]:text-xl  [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-4 [&_h2]:mb-2
+                          [&_h3]:text-lg  [&_h3]:font-semibold [&_h3]:text-gray-900 [&_h3]:mt-3 [&_h3]:mb-1
+                          [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2
+                          [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2
+                          [&_li]:mb-0.5 [&_a]:text-blue-600 [&_a]:underline
+                          [&_table]:w-full [&_table]:border-collapse [&_table]:my-2
+                          [&_th]:border [&_th]:border-gray-200 [&_th]:px-3 [&_th]:py-2 [&_th]:bg-gray-50 [&_th]:font-semibold
+                          [&_td]:border [&_td]:border-gray-200 [&_td]:px-3 [&_td]:py-2"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(parsed.rawHtml) }}
+                  />
+            )
+      }
+
+      // Legacy format: { blocks: [...] }
       const blocks = parsed?.blocks || []
       if (blocks.length === 0) return null
 
