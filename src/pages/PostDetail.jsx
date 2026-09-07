@@ -1,7 +1,7 @@
-// PostDetail.jsx — title + content + share + posted-by
+// PostDetail.jsx — SEO-friendly slug URLs with ID backward compatibility
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { fetchPost, normaliseJob } from '../services/api.js'
+import { fetchPost, fetchPostBySlug, normaliseJob } from '../services/api.js'
 import { recordView } from './Home'
 import ContentRenderer from '../components/ContentRenderer.jsx'
 import { AlertCircle, ArrowLeft, Loader2, Share2, Check, UserCircle2 } from 'lucide-react'
@@ -14,6 +14,9 @@ const CAT_BACK = {
       RESULT: '/results',
       ADMIT_CARD: '/admit-cards',
 }
+
+/** A cuid looks like: c + 24 alphanumeric chars, no hyphens in specific positions */
+const isCuid = (s) => /^c[a-z0-9]{20,30}$/.test(s)
 
 const PostDetail = () => {
       const { slug } = useParams()
@@ -28,20 +31,56 @@ const PostDetail = () => {
             setNotFound(false)
             setPost(null)
 
-            fetchPost(slug)
-                  .then((res) => {
-                        const job = res.data
+            const load = async () => {
+                  try {
+                        let job = null
+
+                        if (isCuid(slug)) {
+                              // Old-style ID URL — load by ID then redirect to slug URL
+                              const res = await fetchPost(slug)
+                              job = res?.data
+                              if (job && job.status === 'PUBLISHED' && job.slug && job.slug !== slug) {
+                                    // Redirect to canonical slug URL
+                                    navigate(`/posts/${job.slug}`, { replace: true })
+                                    return
+                              }
+                        } else {
+                              // New-style slug URL — load by slug
+                              const res = await fetchPostBySlug(slug)
+                              job = res?.data
+                        }
+
                         if (!job || job.status !== 'PUBLISHED') {
                               setNotFound(true)
-                        } else {
-                              const normalised = normaliseJob(job)
-                              setPost(normalised)
-                              recordView(normalised.id)
+                              return
                         }
-                  })
-                  .catch(() => setNotFound(true))
-                  .finally(() => setLoading(false))
-      }, [slug])
+
+                        const normalised = normaliseJob(job)
+                        setPost(normalised)
+                        recordView(normalised.id)
+
+                        // Update canonical <link> for SEO
+                        const canonical = `${window.location.origin}/posts/${normalised.slug}`
+                        let linkEl = document.querySelector('link[rel="canonical"]')
+                        if (!linkEl) {
+                              linkEl = document.createElement('link')
+                              linkEl.rel = 'canonical'
+                              document.head.appendChild(linkEl)
+                        }
+                        linkEl.href = canonical
+
+                        // Update <title> for SEO
+                        document.title = `${normalised.title} | RozgarGrid AI`
+
+                  } catch {
+                        setNotFound(true)
+                  } finally {
+                        setLoading(false)
+                  }
+            }
+
+            load()
+      }, [slug, navigate])
 
       const handleShare = () => {
             const url = window.location.href
@@ -159,8 +198,8 @@ const PostDetail = () => {
                         <button
                               onClick={handleShare}
                               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${copied
-                                          ? 'bg-green-50 border-green-300 text-green-700'
-                                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                                    ? 'bg-green-50 border-green-300 text-green-700'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                                     }`}
                         >
                               {copied ? (

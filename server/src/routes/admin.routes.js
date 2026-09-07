@@ -30,6 +30,7 @@ router.get('/stats', async (req, res) => {
                         orderBy: { createdAt: 'desc' },
                         select: {
                               id: true,
+                              slug: true,
                               title: true,
                               type: true,
                               organization: true,

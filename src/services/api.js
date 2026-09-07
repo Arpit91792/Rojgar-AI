@@ -68,7 +68,7 @@ export const normaliseJob = (job) => {
       return {
             // Identity
             id: job.id,
-            slug: job.id,   // use id as slug since backend has no slug field
+            slug: job.slug || job.id,   // prefer real slug, fall back to id for old posts
             // Display fields
             title: job.title,
             category: TYPE_TO_CATEGORY[job.type] || job.type,
@@ -136,6 +136,7 @@ export const buildJobPayload = (formData, category, status) => {
 
       return {
             title: formData.title,
+            slug: formData.slug || undefined,
             type,
             organization: formData.organization || '',
             department: formData.department || undefined,
@@ -208,6 +209,7 @@ export const parseJobToForm = (job) => {
             lastDate: job.lastDate ? job.lastDate.slice(0, 10) : '',
             examDate: job.examDate ? job.examDate.slice(0, 10) : '',
             contentBlocks: job.contentBlocks || '{"blocks":[]}',
+            slug: job.slug || '',
             ...extra,
       }
 }
@@ -218,6 +220,10 @@ export const fetchPosts = (params = {}) =>
 
 export const fetchPost = (id) =>
       api.get(`/api/jobs/${id}`).then((r) => r.data)
+
+/** Fetch a published post by its SEO slug */
+export const fetchPostBySlug = (slug) =>
+      api.get(`/api/jobs/slug/${slug}`).then((r) => r.data)
 
 export const fetchPostsByType = (type, params = {}) =>
       api.get('/api/jobs', { params: { type, status: 'PUBLISHED', ...params } }).then((r) => r.data)

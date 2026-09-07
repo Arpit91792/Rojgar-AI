@@ -1,15 +1,14 @@
 /**
- * AdminPostForm — Clean post editor with live preview.
- * Title field + rich-text editor + side-by-side live preview.
+ * AdminPostForm — Clean post editor with live preview + SEO slug field.
  */
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../../context/DataContext'
 import { adminGetPost, parseJobToForm } from '../../services/api.js'
 import * as postService from '../../services/postService'
 import ContentBuilder from '../../components/admin/ContentBuilder.jsx'
 import ContentRenderer from '../../components/ContentRenderer.jsx'
-import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react'
+import { AlertCircle, Loader2, Eye, EyeOff, Link2 } from 'lucide-react'
 
 // ── Category derived from URL path ─────────────────────────────────────────
 const PATH_TO_CATEGORY = {
@@ -21,6 +20,19 @@ const PATH_TO_CATEGORY = {
       'admit-cards': postService.CATEGORIES?.ADMIT_CARD || 'ADMIT_CARD',
 }
 
+/** Mirror of server-side slug generator */
+function generateSlug(title) {
+      return title
+            .toString()
+            .toLowerCase()
+            .trim()
+            .replace(/&/g, 'and')
+            .replace(/[\s_]+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+            .replace(/-{2,}/g, '-')
+            .replace(/^-+|-+$/g, '')
+}
+
 const AdminPostForm = ({ pathSegment, postId }) => {
       const navigate = useNavigate()
       const { createPost, updatePost } = useData()
@@ -29,12 +41,18 @@ const AdminPostForm = ({ pathSegment, postId }) => {
       const isEdit = !!postId
 
       const [title, setTitle] = useState('')
+      const [slug, setSlug] = useState('')
+      const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
       const [contentHtml, setContent] = useState('')
       const [showPreview, setShowPreview] = useState(false)
       const [submitting, setSubmitting] = useState(false)
       const [loadingPost, setLoadingPost] = useState(false)
       const [error, setError] = useState('')
       const [success, setSuccess] = useState('')
+
+      // When editing an existing post, keep track of its original slug so we
+      // don't overwrite a user-set slug on re-render.
+      const originalSlugRef = useRef(null)
 
       // Load existing post when editing
       useEffect(() => {
@@ -44,7 +62,13 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                   .then((res) => {
                         const parsed = parseJobToForm(res.data)
                         setTitle(parsed.title || '')
-                        // Support both old block JSON and raw HTML
+
+                        // Set slug from backend (may be null for very old posts)
+                        const existingSlug = res.data?.slug || ''
+                        setSlug(existingSlug)
+                        originalSlugRef.current = existingSlug
+                        if (existingSlug) setSlugManuallyEdited(true) // lock auto-generation for edit
+
                         const raw = parsed.contentBlocks || ''
                         try {
                               const obj = JSON.parse(raw)
@@ -57,15 +81,43 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                   .finally(() => setLoadingPost(false))
       }, [postId, isEdit])
 
+      // Auto-generate slug from title (only when not manually edited)
+      const handleTitleChange = (e) => {
+            const newTitle = e.target.value
+            setTitle(newTitle)
+            if (!slugManuallyEdited) {
+                  setSlug(generateSlug(newTitle))
+            }
+      }
+
+      const handleSlugChange = (e) => {
+            // Let admin type freely; normalise on blur
+            setSlug(e.target.value)
+            setSlugManuallyEdited(true)
+      }
+
+      const handleSlugBlur = () => {
+            // Normalise on blur so the stored value is always URL-safe
+            const normalised = generateSlug(slug)
+            setSlug(normalised)
+      }
+
+      const handleResetSlug = () => {
+            setSlug(generateSlug(title))
+            setSlugManuallyEdited(false)
+      }
+
       const handleSubmit = async (status) => {
             setError('')
             setSuccess('')
             if (!title.trim()) { setError('Title is required.'); return }
+            if (!slug.trim()) { setError('Slug is required. It will be generated from the title.'); return }
 
             setSubmitting(true)
             try {
                   const payload = {
                         title: title.trim(),
+                        slug: slug.trim(),
                         category,
                         status,
                         contentBlocks: JSON.stringify({ rawHtml: contentHtml }),
@@ -93,7 +145,6 @@ const AdminPostForm = ({ pathSegment, postId }) => {
             )
       }
 
-      // The preview content JSON — same format stored in DB and shown to users
       const previewBlocks = JSON.stringify({ rawHtml: contentHtml })
 
       return (
@@ -111,8 +162,8 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                               type="button"
                               onClick={() => setShowPreview(p => !p)}
                               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showPreview
-                                          ? 'bg-blue-600 text-white border-blue-600'
-                                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                                     }`}
                         >
                               {showPreview ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -142,10 +193,39 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                               <input
                                     type="text"
                                     value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
+                                    onChange={handleTitleChange}
                                     placeholder="Post title..."
                                     className="w-full text-3xl font-bold text-gray-900 placeholder-gray-300 border-none outline-none bg-transparent py-2"
                               />
+
+                              {/* Slug field */}
+                              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                                    <Link2 size={14} className="text-gray-400 flex-shrink-0" />
+                                    <span className="text-xs text-gray-400 whitespace-nowrap">rozgargrid-ai.vercel.app/posts/</span>
+                                    <input
+                                          type="text"
+                                          value={slug}
+                                          onChange={handleSlugChange}
+                                          onBlur={handleSlugBlur}
+                                          placeholder="post-slug"
+                                          className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none font-mono min-w-0"
+                                          aria-label="SEO URL slug"
+                                    />
+                                    {slugManuallyEdited && (
+                                          <button
+                                                type="button"
+                                                onClick={handleResetSlug}
+                                                className="text-xs text-blue-500 hover:text-blue-700 whitespace-nowrap flex-shrink-0"
+                                                title="Reset slug from title"
+                                          >
+                                                Reset
+                                          </button>
+                                    )}
+                              </div>
+                              <p className="text-xs text-gray-400 -mt-2 pl-1">
+                                    URL slug — auto-generated from title. You can edit it manually.
+                              </p>
+
                               <div className="border-t border-gray-100" />
 
                               {/* Rich text editor */}
@@ -193,6 +273,11 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                                                 <h1 className="text-lg font-bold leading-tight">
                                                       {title || <span className="text-white/40 italic">Post title…</span>}
                                                 </h1>
+                                                {slug && (
+                                                      <p className="text-xs text-blue-200 mt-1 font-mono truncate">
+                                                            /posts/{slug}
+                                                      </p>
+                                                )}
                                           </div>
 
                                           {/* Preview body — uses the SAME ContentRenderer as PostDetail */}

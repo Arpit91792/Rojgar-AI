@@ -53,6 +53,7 @@ model RefreshToken {
 
 model Job {
   id               String    @id @default(cuid())
+  slug             String?   @unique
   title            String
   type             JobType
   organization     String    @default("")
@@ -92,6 +93,7 @@ model Job {
   @@index([lastDate])
   @@index([createdAt])
   @@index([organization])
+  @@index([slug])
 }
 
 model SavedJob {

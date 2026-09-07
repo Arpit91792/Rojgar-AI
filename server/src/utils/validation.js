@@ -22,6 +22,7 @@ export const loginSchema = z.object({
 // Job / Post validation schema
 export const jobSchema = z.object({
       title: z.string().min(1, 'Title is required'),
+      slug: z.string().optional().nullable(),
       type: z.enum(ALL_JOB_TYPES),
       organization: z.string().optional().nullable().default(''),
       department: z.string().optional().nullable(),

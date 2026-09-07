@@ -5,6 +5,7 @@
 import {
   fetchPosts,
   fetchPost,
+  fetchPostBySlug,
   fetchPostsByType,
   adminGetPosts,
   adminGetPost,
@@ -53,10 +54,10 @@ export const getPostById = async (id) => {
   }
 }
 
-/** Single post by slug — backend uses id as slug */
+/** Single post by slug — uses the real /api/jobs/slug/:slug endpoint */
 export const getPostBySlug = async (slug) => {
   try {
-    const res = await fetchPost(slug)
+    const res = await fetchPostBySlug(slug)
     if (!res.data || res.data.status !== 'PUBLISHED') return null
     return normaliseJob(res.data)
   } catch {

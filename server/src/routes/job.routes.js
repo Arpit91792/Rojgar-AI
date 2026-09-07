@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { validate, validateQuery } from '../utils/validation.js';
 import { jobSchema, jobQuerySchema } from '../utils/validation.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { generateSlug, ensureUniqueSlug } from '../utils/slug.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -53,6 +54,7 @@ router.get('/', validateQuery(jobQuerySchema), async (req, res) => {
                   take: limit,
                   select: {
                         id: true,
+                        slug: true,
                         title: true,
                         type: true,
                         organization: true,
@@ -91,7 +93,85 @@ router.get('/', validateQuery(jobQuerySchema), async (req, res) => {
       }
 });
 
-// Get single job (public)
+// Get single job by SLUG (public) — must be declared before /:id
+router.get('/slug/:slug', async (req, res) => {
+      try {
+            const { slug } = req.params;
+
+            const job = await prisma.job.findUnique({
+                  where: { slug },
+                  select: {
+                        id: true,
+                        slug: true,
+                        title: true,
+                        type: true,
+                        organization: true,
+                        department: true,
+                        location: true,
+                        qualification: true,
+                        ageLimit: true,
+                        salary: true,
+                        vacancies: true,
+                        applicationStart: true,
+                        lastDate: true,
+                        examDate: true,
+                        description: true,
+                        contentBlocks: true,
+                        officialWebsite: true,
+                        notificationPdf: true,
+                        applyLink: true,
+                        status: true,
+                        isFeatured: true,
+                        views: true,
+                        applications: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        publishedAt: true,
+                        createdBy: true,
+                  }
+            });
+
+            if (!job) {
+                  return res.status(404).json({
+                        status: 'error',
+                        message: 'Job not found'
+                  });
+            }
+
+            // Fetch creator's name
+            let createdByName = null;
+            if (job.createdBy) {
+                  try {
+                        const creator = await prisma.user.findUnique({
+                              where: { id: job.createdBy },
+                              select: { name: true }
+                        });
+                        createdByName = creator?.name || null;
+                  } catch (_) { /* ignore */ }
+            }
+
+            // Increment view count for published posts
+            if (job.status === 'PUBLISHED') {
+                  await prisma.job.update({
+                        where: { slug },
+                        data: { views: { increment: 1 } }
+                  });
+            }
+
+            res.json({
+                  status: 'success',
+                  data: { ...job, createdByName }
+            });
+      } catch (error) {
+            console.error('Get job by slug error:', error);
+            res.status(500).json({
+                  status: 'error',
+                  message: 'Failed to fetch job'
+            });
+      }
+});
+
+// Get single job (public) — by ID with optional redirect hint
 router.get('/:id', async (req, res) => {
       try {
             const { id } = req.params;
@@ -100,6 +180,7 @@ router.get('/:id', async (req, res) => {
                   where: { id },
                   select: {
                         id: true,
+                        slug: true,
                         title: true,
                         type: true,
                         organization: true,
@@ -170,9 +251,14 @@ router.get('/:id', async (req, res) => {
 // Create job (admin only)
 router.post('/', authenticate, authorize('ADMIN'), validate(jobSchema), async (req, res) => {
       try {
+            // Auto-generate slug from title
+            const baseSlug = generateSlug(req.body.title);
+            const slug = baseSlug ? await ensureUniqueSlug(prisma, baseSlug) : null;
+
             // Create job (with safe lastDate fallback for post types that don't need it)
             const jobData = {
                   ...req.body,
+                  slug,
                   createdBy: req.user.id,
 
                   ...(req.body.applicationStart && {
@@ -197,6 +283,7 @@ router.post('/', authenticate, authorize('ADMIN'), validate(jobSchema), async (r
                   data: jobData,
                   select: {
                         id: true,
+                        slug: true,
                         title: true,
                         type: true,
                         organization: true,
@@ -251,11 +338,26 @@ router.put('/:id', authenticate, authorize('ADMIN'), validate(jobSchema.partial(
                   })
             };
 
+            // If a new slug was explicitly sent, validate uniqueness; otherwise
+            // if the title changed and no slug override provided, regenerate slug.
+            if (req.body.slug !== undefined) {
+                  // Admin manually set a slug — ensure it's unique (excluding this job)
+                  const base = generateSlug(req.body.slug || req.body.title);
+                  updateData.slug = base ? await ensureUniqueSlug(prisma, base, id) : existingJob.slug;
+            } else if (req.body.title && req.body.title !== existingJob.title && !existingJob.slug) {
+                  // Title changed and post has no slug yet — generate one
+                  const base = generateSlug(req.body.title);
+                  updateData.slug = base ? await ensureUniqueSlug(prisma, base, id) : null;
+            }
+            // If title changed but post already has a slug, keep the existing slug
+            // (changing a slug would break existing links — admin must explicitly clear/set it)
+
             const job = await prisma.job.update({
                   where: { id },
                   data: updateData,
                   select: {
                         id: true,
+                        slug: true,
                         title: true,
                         type: true,
                         organization: true,
@@ -372,6 +474,7 @@ router.get('/type/:type', validateQuery(jobQuerySchema), async (req, res) => {
                   take: limit,
                   select: {
                         id: true,
+                        slug: true,
                         title: true,
                         type: true,
                         organization: true,
@@ -483,6 +586,7 @@ router.get('/user/saved', authenticate, async (req, res) => {
                         job: {
                               select: {
                                     id: true,
+                                    slug: true,
                                     title: true,
                                     type: true,
                                     organization: true,

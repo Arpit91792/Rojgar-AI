@@ -128,6 +128,44 @@ async function setupRoutes() {
       }
 }
 
+// Sitemap endpoint — returns published posts for SEO sitemap generation
+app.get('/sitemap.xml', async (req, res) => {
+      try {
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            const siteUrl = process.env.CLIENT_URL || 'https://rozgargrid-ai.vercel.app';
+
+            const jobs = await prisma.job.findMany({
+                  where: { status: 'PUBLISHED', slug: { not: null } },
+                  select: { slug: true, updatedAt: true },
+                  orderBy: { updatedAt: 'desc' }
+            });
+            await prisma.$disconnect();
+
+            const urls = jobs.map(job => `
+  <url>
+    <loc>${siteUrl}/posts/${job.slug}</loc>
+    <lastmod>${job.updatedAt.toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('');
+
+            const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${siteUrl}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>${urls}
+</urlset>`;
+
+            res.setHeader('Content-Type', 'application/xml');
+            res.send(xml);
+      } catch (error) {
+            res.status(500).send('Sitemap generation failed');
+      }
+});
+
 // Setup routes
 await setupRoutes();
 
