@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import {
-      Search, Building2, Briefcase, GraduationCap,
-      Calendar, FileText, FileCheck, MapPin, Clock,
-      ChevronRight, X, Loader2
-} from 'lucide-react'
+import { Search, Building2, Briefcase, GraduationCap, Calendar, FileText, FileCheck, X, Loader2 } from 'lucide-react'
 import { fetchPostsByType, normaliseJob } from '../services/api.js'
 
 const CAT_META = {
@@ -16,52 +12,16 @@ const CAT_META = {
       ADMIT_CARD: { label: 'Admit Card', color: 'bg-orange-100 text-orange-700', icon: FileCheck },
 }
 
-const fmt = (d) =>
-      d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null
-
-const ResultCard = ({ post }) => {
-      const meta = CAT_META[post.category] || { label: post.category, color: 'bg-gray-100 text-gray-600', icon: FileText }
-      const Icon = meta.icon
-      const lastDate = post.lastDate || post.examDate
-
-      return (
-            <Link to={`/posts/${post.id}`}
-                  className="group bg-white rounded-xl border hover:shadow-lg hover:border-blue-200 transition-all duration-200 p-5 flex flex-col">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                              <div className="p-1.5 bg-gray-100 rounded-lg flex-shrink-0">
-                                    <Icon size={14} className="text-gray-600" />
-                              </div>
-                              <h3 className="font-bold text-gray-900 text-sm leading-tight group-hover:text-blue-600 transition-colors line-clamp-2">
-                                    {post.title}
-                              </h3>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${meta.color}`}>
-                              {meta.label}
-                        </span>
-                  </div>
-                  {post.organization && <p className="text-gray-500 text-xs mb-3 truncate">{post.organization}</p>}
-                  <div className="space-y-1 text-xs text-gray-500 mt-auto">
-                        {post.location && (
-                              <div className="flex items-center gap-1.5">
-                                    <MapPin size={11} className="flex-shrink-0" />
-                                    <span className="truncate">{post.location}</span>
-                              </div>
-                        )}
-                        {lastDate && (
-                              <div className="flex items-center gap-1.5">
-                                    <Clock size={11} className="flex-shrink-0" />
-                                    <span>Last Date: <span className="font-medium text-red-500">{fmt(lastDate)}</span></span>
-                              </div>
-                        )}
-                        {post.salary && <p className="font-medium text-green-600">{post.salary}</p>}
-                  </div>
-                  <div className="mt-3 flex items-center gap-1 text-xs font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        View Details <ChevronRight size={12} />
-                  </div>
-            </Link>
-      )
-}
+const ResultCard = ({ post }) => (
+      <Link
+            to={`/posts/${post.id}`}
+            className="block w-full bg-white border-2 border-green-500 rounded-xl px-5 py-4 hover:shadow-md hover:border-green-600 transition-all duration-200 group"
+      >
+            <h3 className="font-semibold text-gray-900 text-sm group-hover:text-green-700 transition-colors">
+                  {post.title}
+            </h3>
+      </Link>
+)
 
 // ── SearchPage ────────────────────────────────────────────────────────────────
 const TYPES = ['GOVERNMENT', 'PRIVATE', 'INTERNSHIP', 'TIME_TABLE', 'RESULT', 'ADMIT_CARD']

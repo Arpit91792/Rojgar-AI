@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
       Building2, GraduationCap, Briefcase, Calendar,
-      FileText, FileCheck, ChevronRight, Clock, MapPin,
+      FileText, FileCheck, ChevronRight,
       Search, TrendingUp, Star, ArrowRight, Sparkles,
-      IndianRupee, Users
+      Users, Clock
 } from 'lucide-react'
 import { fetchPostsByType } from '../services/api.js'
 import { normaliseJob } from '../services/api.js'
@@ -19,15 +19,6 @@ const CATEGORIES = [
       { icon: FileCheck, label: 'Admit Cards', desc: 'Hall tickets & download', to: '/admit-cards', gradient: 'from-orange-500 to-orange-600', softBg: 'bg-orange-50', softText: 'text-orange-600', softBorder: 'border-orange-100', hoverRing: 'hover:ring-orange-300' },
 ]
 
-const CAT_BADGE = {
-      GOVERNMENT_JOB: { label: 'Govt Job', bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' },
-      PRIVATE_JOB: { label: 'Private', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-      INTERNSHIP: { label: 'Internship', bg: 'bg-violet-100', text: 'text-violet-700', dot: 'bg-violet-500' },
-      TIME_TABLE: { label: 'Time Table', bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' },
-      RESULT: { label: 'Result', bg: 'bg-teal-100', text: 'text-teal-700', dot: 'bg-teal-500' },
-      ADMIT_CARD: { label: 'Admit Card', bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' },
-}
-
 // ── Recently viewed — still uses localStorage (per-device UI preference only) ─
 const RECENTLY_VIEWED_KEY = 'rojgar_recently_viewed'
 const MAX_RECENT = 4
@@ -40,60 +31,17 @@ export const recordView = (postId) => {
       } catch (_) { }
 }
 
-const fmt = (d) =>
-      d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null
-
 // ── Post card ─────────────────────────────────────────────────────────────────
-const PostCard = ({ post }) => {
-      const cat = CAT_BADGE[post.category] || { label: post.category, bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' }
-      const lastDate = post.lastDate || post.examDate
-
-      return (
-            <Link
-                  to={`/posts/${post.id}`}
-                  className="group bg-white rounded-2xl border border-slate-100 hover:border-blue-200 hover:shadow-xl card-hover p-5 flex flex-col gap-3"
-            >
-                  <div className="flex items-center justify-between">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cat.bg} ${cat.text}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${cat.dot}`} />
-                              {cat.label}
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">NEW</span>
-                  </div>
-                  <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
-                        {post.title}
-                  </h3>
-                  {post.organization && (
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                              <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                    <Building2 size={11} className="text-slate-400" />
-                              </div>
-                              <span className="truncate">{post.organization}</span>
-                        </div>
-                  )}
-                  <div className="flex flex-wrap gap-1.5 mt-auto">
-                        {post.location && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 text-xs text-slate-500 border border-slate-100">
-                                    <MapPin size={10} /> {post.location}
-                              </span>
-                        )}
-                        {post.salary && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-xs text-emerald-600 border border-emerald-100 font-medium">
-                                    <IndianRupee size={10} /> {post.salary}
-                              </span>
-                        )}
-                        {lastDate && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 text-xs text-red-500 border border-red-100">
-                                    <Clock size={10} /> {fmt(lastDate)}
-                              </span>
-                        )}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-all duration-200 -mb-1">
-                        View Details <ChevronRight size={13} />
-                  </div>
-            </Link>
-      )
-}
+const PostCard = ({ post }) => (
+      <Link
+            to={`/posts/${post.id}`}
+            className="block w-full bg-white border-2 border-green-500 rounded-xl px-5 py-4 hover:shadow-md hover:border-green-600 transition-all duration-200 group"
+      >
+            <h3 className="font-semibold text-gray-900 text-sm group-hover:text-green-700 transition-colors">
+                  {post.title}
+            </h3>
+      </Link>
+)
 
 // ── Hero search ───────────────────────────────────────────────────────────────
 const WORDS = ['Government Jobs', 'Private Jobs', 'Internships', 'Exam Results', 'Admit Cards']
