@@ -182,15 +182,11 @@ const PostDetail = () => {
 
                         {/* Actions */}
                         <div className="px-6 py-4 bg-white flex flex-wrap gap-3">
-                              {post.applyLink ? (
+                              {post.applyLink && (
                                     <a href={post.applyLink} target="_blank" rel="noopener noreferrer"
                                           className={`flex items-center gap-2 px-6 py-3 ${clr.bg} text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity`}>
                                           Apply Now <ExternalLink size={15} />
                                     </a>
-                              ) : (
-                                    <button disabled className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-400 rounded-xl font-semibold text-sm cursor-not-allowed">
-                                          Application Link Not Available
-                                    </button>
                               )}
                               {post.resultLink && (
                                     <a href={post.resultLink} target="_blank" rel="noopener noreferrer"
@@ -203,6 +199,9 @@ const PostDetail = () => {
                                           className="flex items-center gap-2 px-5 py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                                           <Globe size={15} /> Official Website
                                     </a>
+                              )}
+                              {!post.applyLink && !post.resultLink && !post.officialWebsite && (
+                                    <p className="text-sm text-gray-400 italic">No links available for this post.</p>
                               )}
                         </div>
                   </div>
@@ -280,25 +279,31 @@ const PostDetail = () => {
                         </div>
 
                         <div className="space-y-6">
-                              <div className="bg-white rounded-xl border p-5">
-                                    <h3 className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Key Details</h3>
-                                    <div className="space-y-0">
-                                          <InfoRow icon={Building2} label="Organization" value={post.organization} />
-                                          <InfoRow icon={MapPin} label="Location" value={post.location} />
-                                          <InfoRow icon={BookOpen} label="Qualification" value={post.qualification || post.eligibility} />
-                                          <InfoRow icon={Users} label="Vacancies" value={post.vacancies} />
-                                          <InfoRow icon={IndianRupee} label="Salary" value={post.salary} highlight="text-green-700" />
-                                          <InfoRow icon={IndianRupee} label="Stipend" value={post.stipend} highlight="text-green-700" />
-                                          <InfoRow icon={Briefcase} label="Job Type" value={post.jobType} />
-                                          <InfoRow icon={Briefcase} label="Work Mode" value={post.workMode} />
-                                          <InfoRow icon={Clock} label="Duration" value={post.duration} />
-                                          <InfoRow icon={Calendar} label="Age Limit" value={post.ageLimit} />
-                                          <InfoRow icon={BookOpen} label="Experience" value={post.experience} />
-                                          <InfoRow icon={GraduationCap} label="Course" value={post.course} />
-                                          <InfoRow icon={GraduationCap} label="Subject" value={post.subject} />
-                                          <InfoRow icon={GraduationCap} label="Exam Name" value={post.examName} />
-                                    </div>
-                              </div>
+                              {/* Only show Key Details panel when there's something to show */}
+                              {(post.organization || post.location || post.qualification || post.eligibility ||
+                                    post.vacancies || post.salary || post.stipend || post.jobType || post.workMode ||
+                                    post.duration || post.ageLimit || post.experience || post.course || post.subject ||
+                                    post.examName) && (
+                                          <div className="bg-white rounded-xl border p-5">
+                                                <h3 className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Key Details</h3>
+                                                <div className="space-y-0">
+                                                      <InfoRow icon={Building2} label="Organization" value={post.organization} />
+                                                      <InfoRow icon={MapPin} label="Location" value={post.location} />
+                                                      <InfoRow icon={BookOpen} label="Qualification" value={post.qualification || post.eligibility} />
+                                                      <InfoRow icon={Users} label="Vacancies" value={post.vacancies} />
+                                                      <InfoRow icon={IndianRupee} label="Salary" value={post.salary} highlight="text-green-700" />
+                                                      <InfoRow icon={IndianRupee} label="Stipend" value={post.stipend} highlight="text-green-700" />
+                                                      <InfoRow icon={Briefcase} label="Job Type" value={post.jobType} />
+                                                      <InfoRow icon={Briefcase} label="Work Mode" value={post.workMode} />
+                                                      <InfoRow icon={Clock} label="Duration" value={post.duration} />
+                                                      <InfoRow icon={Calendar} label="Age Limit" value={post.ageLimit} />
+                                                      <InfoRow icon={BookOpen} label="Experience" value={post.experience} />
+                                                      <InfoRow icon={GraduationCap} label="Course" value={post.course} />
+                                                      <InfoRow icon={GraduationCap} label="Subject" value={post.subject} />
+                                                      <InfoRow icon={GraduationCap} label="Exam Name" value={post.examName} />
+                                                </div>
+                                          </div>
+                                    )}
 
                               {(post.applyLink || post.officialWebsite || post.resultLink) && (
                                     <div className="bg-white rounded-xl border p-5">

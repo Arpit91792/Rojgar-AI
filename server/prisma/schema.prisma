@@ -55,7 +55,7 @@ model Job {
   id               String    @id @default(cuid())
   title            String
   type             JobType
-  organization     String
+  organization     String    @default("")
   department       String?
   location         String    @default("")
   qualification    String    @default("")
@@ -63,7 +63,7 @@ model Job {
   salary           String?
   vacancies        String?
   applicationStart DateTime?
-  lastDate         DateTime
+  lastDate         DateTime?
   examDate         DateTime?
   description      String?
   selectionProcess String?

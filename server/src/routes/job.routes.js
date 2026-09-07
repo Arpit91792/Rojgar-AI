@@ -166,11 +166,12 @@ router.post('/', authenticate, authorize('ADMIN'), validate(jobSchema), async (r
                         applicationStart: new Date(req.body.applicationStart)
                   }),
 
-                  lastDate: req.body.lastDate
-                        ? new Date(req.body.lastDate)
+                  ...(req.body.lastDate
+                        ? { lastDate: new Date(req.body.lastDate) }
                         : req.body.examDate
-                              ? new Date(req.body.examDate)
-                              : new Date(),
+                              ? { lastDate: new Date(req.body.examDate) }
+                              : {}   // let it be null — DB now allows it
+                  ),
 
                   ...(req.body.examDate && {
                         examDate: new Date(req.body.examDate)

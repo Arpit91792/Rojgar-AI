@@ -1,15 +1,15 @@
 /**
- * AdminPostForm — Minimal post editor.
- * Just a title field and a full rich-text editor.
- * No category/status/structured fields — clean writing experience.
+ * AdminPostForm — Clean post editor with live preview.
+ * Title field + rich-text editor + side-by-side live preview.
  */
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../../context/DataContext'
 import { adminGetPost, parseJobToForm } from '../../services/api.js'
 import * as postService from '../../services/postService'
 import ContentBuilder from '../../components/admin/ContentBuilder.jsx'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import ContentRenderer from '../../components/ContentRenderer.jsx'
+import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react'
 
 // ── Category derived from URL path ─────────────────────────────────────────
 const PATH_TO_CATEGORY = {
@@ -21,9 +21,6 @@ const PATH_TO_CATEGORY = {
       'admit-cards': postService.CATEGORIES?.ADMIT_CARD || 'ADMIT_CARD',
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// AdminPostForm
-// ══════════════════════════════════════════════════════════════════════════════
 const AdminPostForm = ({ pathSegment, postId }) => {
       const navigate = useNavigate()
       const { createPost, updatePost } = useData()
@@ -32,7 +29,8 @@ const AdminPostForm = ({ pathSegment, postId }) => {
       const isEdit = !!postId
 
       const [title, setTitle] = useState('')
-      const [contentBlocks, setContent] = useState('')
+      const [contentHtml, setContent] = useState('')
+      const [showPreview, setShowPreview] = useState(false)
       const [submitting, setSubmitting] = useState(false)
       const [loadingPost, setLoadingPost] = useState(false)
       const [error, setError] = useState('')
@@ -50,7 +48,6 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         const raw = parsed.contentBlocks || ''
                         try {
                               const obj = JSON.parse(raw)
-                              // If it's the old blocks format, flatten to empty so editor is blank
                               setContent(obj?.rawHtml || '')
                         } catch {
                               setContent(raw)
@@ -71,8 +68,7 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         title: title.trim(),
                         category,
                         status,
-                        // Store raw HTML in contentBlocks as JSON wrapper for compatibility
-                        contentBlocks: JSON.stringify({ rawHtml: contentBlocks }),
+                        contentBlocks: JSON.stringify({ rawHtml: contentHtml }),
                   }
                   if (isEdit) {
                         await updatePost(postId, payload)
@@ -97,8 +93,32 @@ const AdminPostForm = ({ pathSegment, postId }) => {
             )
       }
 
+      // The preview content JSON — same format stored in DB and shown to users
+      const previewBlocks = JSON.stringify({ rawHtml: contentHtml })
+
       return (
-            <div className="max-w-4xl mx-auto space-y-5 pb-10">
+            <div className="max-w-7xl mx-auto space-y-4 pb-10">
+
+                  {/* ── Top bar ── */}
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <h2 className="text-xl font-bold text-gray-900">
+                              {isEdit ? 'Edit Post' : 'New Post'}
+                              <span className="ml-2 text-sm font-normal text-gray-400">
+                                    {category.replace(/_/g, ' ')}
+                              </span>
+                        </h2>
+                        <button
+                              type="button"
+                              onClick={() => setShowPreview(p => !p)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showPreview
+                                          ? 'bg-blue-600 text-white border-blue-600'
+                                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                        >
+                              {showPreview ? <EyeOff size={15} /> : <Eye size={15} />}
+                              {showPreview ? 'Hide Preview' : 'Show Preview'}
+                        </button>
+                  </div>
 
                   {/* Alerts */}
                   {error && (
@@ -113,50 +133,81 @@ const AdminPostForm = ({ pathSegment, postId }) => {
                         </div>
                   )}
 
-                  {/* Title */}
-                  <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Post title..."
-                        className="w-full text-3xl font-bold text-gray-900 placeholder-gray-300 border-none outline-none bg-transparent py-2"
-                  />
+                  {/* ── Editor + Preview layout ── */}
+                  <div className={`grid gap-6 ${showPreview ? 'xl:grid-cols-2' : 'grid-cols-1'}`}>
 
-                  <div className="border-t border-gray-100" />
+                        {/* ── EDITOR COLUMN ── */}
+                        <div className="space-y-4">
+                              {/* Title */}
+                              <input
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="Post title..."
+                                    className="w-full text-3xl font-bold text-gray-900 placeholder-gray-300 border-none outline-none bg-transparent py-2"
+                              />
+                              <div className="border-t border-gray-100" />
 
-                  {/* Rich text editor */}
-                  <ContentBuilder
-                        value={contentBlocks}
-                        onChange={setContent}
-                  />
+                              {/* Rich text editor */}
+                              <ContentBuilder value={contentHtml} onChange={setContent} />
 
-                  {/* Action bar */}
-                  <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-200">
-                        <button
-                              type="button"
-                              onClick={() => handleSubmit('DRAFT')}
-                              disabled={submitting}
-                              className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
-                        >
-                              {submitting && <Loader2 size={14} className="animate-spin" />}
-                              Save Draft
-                        </button>
-                        <button
-                              type="button"
-                              onClick={() => handleSubmit('PUBLISHED')}
-                              disabled={submitting}
-                              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
-                        >
-                              {submitting && <Loader2 size={14} className="animate-spin" />}
-                              {isEdit ? 'Update & Publish' : 'Publish Post'}
-                        </button>
-                        <button
-                              type="button"
-                              onClick={() => navigate(`/admin/${pathSegment}`)}
-                              className="px-4 py-2.5 text-gray-500 hover:text-gray-800 text-sm font-medium"
-                        >
-                              Cancel
-                        </button>
+                              {/* Action bar */}
+                              <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-200">
+                                    <button
+                                          type="button"
+                                          onClick={() => handleSubmit('DRAFT')}
+                                          disabled={submitting}
+                                          className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                                    >
+                                          {submitting && <Loader2 size={14} className="animate-spin" />}
+                                          Save Draft
+                                    </button>
+                                    <button
+                                          type="button"
+                                          onClick={() => handleSubmit('PUBLISHED')}
+                                          disabled={submitting}
+                                          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
+                                    >
+                                          {submitting && <Loader2 size={14} className="animate-spin" />}
+                                          {isEdit ? 'Update & Publish' : 'Publish Post'}
+                                    </button>
+                                    <button
+                                          type="button"
+                                          onClick={() => navigate(`/admin/${pathSegment}`)}
+                                          className="px-4 py-2.5 text-gray-500 hover:text-gray-800 text-sm font-medium"
+                                    >
+                                          Cancel
+                                    </button>
+                              </div>
+                        </div>
+
+                        {/* ── PREVIEW COLUMN ── */}
+                        {showPreview && (
+                              <div className="xl:sticky xl:top-20 xl:self-start">
+                                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                          {/* Preview header */}
+                                          <div className="bg-blue-600 px-5 py-4 text-white">
+                                                <p className="text-xs text-blue-200 mb-1 font-medium uppercase tracking-wide">
+                                                      Live Preview — exactly what users will see
+                                                </p>
+                                                <h1 className="text-lg font-bold leading-tight">
+                                                      {title || <span className="text-white/40 italic">Post title…</span>}
+                                                </h1>
+                                          </div>
+
+                                          {/* Preview body — uses the SAME ContentRenderer as PostDetail */}
+                                          <div className="p-5 min-h-[200px]">
+                                                {contentHtml ? (
+                                                      <ContentRenderer contentBlocks={previewBlocks} />
+                                                ) : (
+                                                      <p className="text-gray-400 text-sm italic text-center py-10">
+                                                            Start writing to see preview…
+                                                      </p>
+                                                )}
+                                          </div>
+                                    </div>
+                              </div>
+                        )}
                   </div>
 
             </div>
