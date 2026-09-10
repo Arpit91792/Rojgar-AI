@@ -3,13 +3,12 @@ import { NavLink, Link, useLocation, useNavigate, useSearchParams } from 'react-
 import {
       Menu, X, Search, Bell, User,
       Building2, Briefcase, GraduationCap,
-      Calendar, FileText, FileCheck, Sparkles, LayoutList
+      Calendar, FileText, FileCheck, Sparkles
 } from 'lucide-react'
 import logo from '../assets/logo.png'
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-      { icon: LayoutList, label: 'All Posts', to: '/all-posts', accent: 'text-slate-600', activeBg: 'bg-slate-100' },
       { icon: Building2, label: 'Government Jobs', to: '/government-jobs', accent: 'text-blue-500', activeBg: 'bg-blue-50' },
       { icon: Briefcase, label: 'Private Jobs', to: '/private-jobs', accent: 'text-emerald-500', activeBg: 'bg-emerald-50' },
       { icon: GraduationCap, label: 'Internships', to: '/internships', accent: 'text-violet-500', activeBg: 'bg-violet-50' },
@@ -18,17 +17,7 @@ const NAV_ITEMS = [
       { icon: FileCheck, label: 'Admit Cards', to: '/admit-cards', accent: 'text-orange-500', activeBg: 'bg-orange-50' },
 ]
 
-// Category-to-route mapping — used to highlight active nav on post detail
-const CAT_ROUTE = {
-      GOVERNMENT_JOB: '/government-jobs',
-      PRIVATE_JOB: '/private-jobs',
-      INTERNSHIP: '/internships',
-      TIME_TABLE: '/time-table',
-      RESULT: '/results',
-      ADMIT_CARD: '/admit-cards',
-}
-
-// ── Sidebar nav item (used in DesktopSidebar and mobile drawer) ───────────────
+// ── Sidebar nav item ──────────────────────────────────────────────────────────
 const NavItem = ({ icon: Icon, label, to, accent, activeBg, onClick }) => (
       <NavLink
             to={to}
@@ -57,36 +46,10 @@ const NavItem = ({ icon: Icon, label, to, accent, activeBg, onClick }) => (
       </NavLink>
 )
 
-// ── Horizontal category nav — replaces search bar on /posts/:slug ─────────────
-const CategoryNav = ({ activeCatRoute }) => (
-      <nav
-            className="hidden md:flex flex-1 items-center gap-1 mx-4 overflow-x-auto scrollbar-hide"
-            aria-label="Browse categories"
-      >
-            {NAV_ITEMS.map(({ icon: Icon, label, to, accent }) => {
-                  const isActive = activeCatRoute === to
-                  return (
-                        <Link
-                              key={to}
-                              to={to}
-                              className={[
-                                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0',
-                                    isActive
-                                          ? 'bg-blue-600 text-white shadow-sm'
-                                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-                              ].join(' ')}
-                        >
-                              <Icon size={13} className={isActive ? 'text-white' : accent} />
-                              {label}
-                        </Link>
-                  )
-            })}
-      </nav>
-)
-
 // ── Desktop sidebar ───────────────────────────────────────────────────────────
 export const DesktopSidebar = () => (
       <aside className="hidden lg:flex flex-col fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-white border-r border-slate-100 z-20 overflow-y-auto scrollbar-hide">
+            {/* Browse label */}
             <div className="px-4 pt-5 pb-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Browse</p>
             </div>
@@ -95,6 +58,8 @@ export const DesktopSidebar = () => (
                         <NavItem key={item.to} {...item} />
                   ))}
             </nav>
+
+            {/* Quick stats promo */}
             <div className="mx-3 mt-auto mb-4 p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
                   <div className="flex items-center gap-2 mb-2">
                         <Sparkles size={14} className="text-yellow-300" />
@@ -116,14 +81,6 @@ const Header = () => {
       const navigate = useNavigate()
       const mobileSearchRef = useRef(null)
       const [searchParams] = useSearchParams()
-
-      // Detect post-detail page so we can swap search → category nav
-      const isPostDetail = /^\/posts\/[^/]+/.test(location.pathname)
-
-      // Determine which category route to highlight based on URL (best-effort)
-      // PostDetail does not pass category up — we derive it from the URL context
-      // The active highlight is handled by the CategoryNav internally via NavLink
-      const activeCatRoute = null  // CategoryNav uses its own active detection
 
       useEffect(() => {
             if (location.pathname === '/search') setSearchValue(searchParams.get('q') || '')
@@ -174,42 +131,35 @@ const Header = () => {
                                     </Link>
                               </div>
 
-                              {/* Center: category nav on post-detail, search bar everywhere else */}
-                              {isPostDetail ? (
-                                    <CategoryNav activeCatRoute={activeCatRoute} />
-                              ) : (
-                                    <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-2xl mx-6">
-                                          <div className="relative w-full group">
-                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
-                                                <input
-                                                      type="search"
-                                                      placeholder="Search jobs, internships, results, admit cards…"
-                                                      value={searchValue}
-                                                      onChange={(e) => setSearchValue(e.target.value)}
-                                                      className="w-full pl-10 pr-28 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 focus:bg-white transition-all"
-                                                />
-                                                <button
-                                                      type="submit"
-                                                      className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                                                >
-                                                      Search
-                                                </button>
-                                          </div>
-                                    </form>
-                              )}
+                              {/* Center: desktop search */}
+                              <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-2xl mx-6">
+                                    <div className="relative w-full group">
+                                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
+                                          <input
+                                                type="search"
+                                                placeholder="Search jobs, internships, results, admit cards…"
+                                                value={searchValue}
+                                                onChange={(e) => setSearchValue(e.target.value)}
+                                                className="w-full pl-10 pr-28 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 focus:bg-white transition-all"
+                                          />
+                                          <button
+                                                type="submit"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                          >
+                                                Search
+                                          </button>
+                                    </div>
+                              </form>
 
                               {/* Right icons */}
                               <div className="flex items-center gap-1 flex-shrink-0">
-                                    {/* Mobile search icon — hidden on post detail */}
-                                    {!isPostDetail && (
-                                          <button
-                                                aria-label="Search"
-                                                onClick={() => setIsMobileSearchOpen((o) => !o)}
-                                                className="md:hidden p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                                          >
-                                                {isMobileSearchOpen ? <X size={20} /> : <Search size={20} />}
-                                          </button>
-                                    )}
+                                    <button
+                                          aria-label="Search"
+                                          onClick={() => setIsMobileSearchOpen((o) => !o)}
+                                          className="md:hidden p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                                    >
+                                          {isMobileSearchOpen ? <X size={20} /> : <Search size={20} />}
+                                    </button>
                                     <button aria-label="Notifications" className="relative p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors">
                                           <Bell size={20} />
                                           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
@@ -223,49 +173,28 @@ const Header = () => {
                               </div>
                         </div>
 
-                        {/* Mobile search slide-down — non-post-detail only */}
-                        {!isPostDetail && (
-                              <div className={[
-                                    'md:hidden overflow-hidden transition-all duration-300 border-t border-slate-100',
-                                    isMobileSearchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0',
-                              ].join(' ')}>
-                                    <form onSubmit={handleSearchSubmit} className="px-4 py-3">
-                                          <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                                <input
-                                                      ref={mobileSearchRef}
-                                                      type="search"
-                                                      placeholder="Search jobs, internships…"
-                                                      value={searchValue}
-                                                      onChange={(e) => setSearchValue(e.target.value)}
-                                                      className="w-full pl-9 pr-20 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400"
-                                                />
-                                                <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                                                      Go
-                                                </button>
-                                          </div>
-                                    </form>
-                              </div>
-                        )}
-
-                        {/* Mobile horizontal category strip — post-detail only */}
-                        {isPostDetail && (
-                              <nav
-                                    className="md:hidden flex items-center gap-1 px-3 pb-2.5 pt-1 overflow-x-auto scrollbar-hide border-t border-slate-100"
-                                    aria-label="Browse categories"
-                              >
-                                    {NAV_ITEMS.map(({ icon: Icon, label, to, accent }) => (
-                                          <Link
-                                                key={to}
-                                                to={to}
-                                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
-                                          >
-                                                <Icon size={11} className={accent} />
-                                                {label}
-                                          </Link>
-                                    ))}
-                              </nav>
-                        )}
+                        {/* Mobile search slide-down */}
+                        <div className={[
+                              'md:hidden overflow-hidden transition-all duration-300 border-t border-slate-100',
+                              isMobileSearchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0',
+                        ].join(' ')}>
+                              <form onSubmit={handleSearchSubmit} className="px-4 py-3">
+                                    <div className="relative">
+                                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                          <input
+                                                ref={mobileSearchRef}
+                                                type="search"
+                                                placeholder="Search jobs, internships…"
+                                                value={searchValue}
+                                                onChange={(e) => setSearchValue(e.target.value)}
+                                                className="w-full pl-9 pr-20 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400"
+                                          />
+                                          <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                                                Go
+                                          </button>
+                                    </div>
+                              </form>
+                        </div>
                   </header>
 
                   {/* Mobile overlay */}
@@ -290,6 +219,7 @@ const Header = () => {
                               isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
                         ].join(' ')}
                   >
+                        {/* Drawer header */}
                         <div className="flex items-center justify-between px-4 h-16 border-b border-slate-100 flex-shrink-0">
                               <Link to="/" onClick={close} className="flex items-center gap-2">
                                     <img src={logo} alt="RozgarGrid AI" className="h-8 w-auto object-contain" />

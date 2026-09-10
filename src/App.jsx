@@ -20,8 +20,6 @@ import Results from './pages/Results'
 import AdmitCards from './pages/AdmitCards'
 import PostDetail from './pages/PostDetail'
 import SearchPage from './pages/SearchPage'
-import AllPosts from './pages/AllPosts'
-import PostsPage from './pages/PostsPage'
 import NotFound from './pages/NotFound'
 
 // Admin layout + pages
@@ -86,13 +84,9 @@ function App() {
                         <AuthProvider>
                               <Router>
                                     <Routes>
-                                          {/* ── /posts — standalone latest-jobs listing (no site nav) ── */}
-                                          <Route path="/posts" element={<PostsPage />} />
-
                                           {/* ── PUBLIC ROUTES ── */}
                                           <Route path="/" element={<Layout />}>
                                                 <Route index element={<Home />} />
-                                                <Route path="all-posts" element={<AllPosts />} />
                                                 <Route path="government-jobs" element={<GovernmentJobs />} />
                                                 <Route path="private-jobs" element={<PrivateJobs />} />
                                                 <Route path="internships" element={<Internships />} />
