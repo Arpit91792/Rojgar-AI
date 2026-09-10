@@ -236,7 +236,7 @@ const Home = () => {
                   {/* Latest Opportunities */}
                   <section>
                         <SectionHeader icon={TrendingUp} iconBg="bg-blue-50" iconColor="text-blue-600"
-                              title="Latest Opportunities" linkTo="/government-jobs" linkLabel="View all" />
+                              title="Latest Opportunities" linkTo="/all-posts" linkLabel="View all" />
                         {loadingLatest ? (
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {[1, 2, 3, 4].map((i) => (

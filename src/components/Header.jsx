@@ -3,12 +3,13 @@ import { NavLink, Link, useLocation, useNavigate, useSearchParams } from 'react-
 import {
       Menu, X, Search, Bell, User,
       Building2, Briefcase, GraduationCap,
-      Calendar, FileText, FileCheck, Sparkles
+      Calendar, FileText, FileCheck, Sparkles, LayoutList
 } from 'lucide-react'
 import logo from '../assets/logo.png'
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
+      { icon: LayoutList, label: 'All Posts', to: '/all-posts', accent: 'text-slate-600', activeBg: 'bg-slate-100' },
       { icon: Building2, label: 'Government Jobs', to: '/government-jobs', accent: 'text-blue-500', activeBg: 'bg-blue-50' },
       { icon: Briefcase, label: 'Private Jobs', to: '/private-jobs', accent: 'text-emerald-500', activeBg: 'bg-emerald-50' },
       { icon: GraduationCap, label: 'Internships', to: '/internships', accent: 'text-violet-500', activeBg: 'bg-violet-50' },

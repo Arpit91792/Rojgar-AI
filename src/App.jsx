@@ -20,6 +20,7 @@ import Results from './pages/Results'
 import AdmitCards from './pages/AdmitCards'
 import PostDetail from './pages/PostDetail'
 import SearchPage from './pages/SearchPage'
+import AllPosts from './pages/AllPosts'
 import NotFound from './pages/NotFound'
 
 // Admin layout + pages
@@ -87,6 +88,7 @@ function App() {
                                           {/* ── PUBLIC ROUTES ── */}
                                           <Route path="/" element={<Layout />}>
                                                 <Route index element={<Home />} />
+                                                <Route path="all-posts" element={<AllPosts />} />
                                                 <Route path="government-jobs" element={<GovernmentJobs />} />
                                                 <Route path="private-jobs" element={<PrivateJobs />} />
                                                 <Route path="internships" element={<Internships />} />
