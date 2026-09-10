@@ -41,6 +41,11 @@ async function main() {
                   password: process.env.ADMIN3_PASSWORD,
                   name: process.env.ADMIN3_NAME || 'Admin3',
             },
+            {
+                  email: process.env.ADMIN4_EMAIL,
+                  password: process.env.ADMIN4_PASSWORD,
+                  name: process.env.ADMIN4_NAME || 'Admin4',
+            },
       ].filter((a) => a.email && a.password) // skip if not set
 
       if (admins.length === 0) {
@@ -64,7 +69,8 @@ async function main() {
                   email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'Admin 1 (primary)' :
                         email.toLowerCase() === process.env.ADMIN2_EMAIL?.toLowerCase() ? 'Admin 2' :
                               email.toLowerCase() === process.env.ADMIN3_EMAIL?.toLowerCase() ? 'Admin 3' :
-                                    'Admin (unknown slot)'
+                                    email.toLowerCase() === process.env.ADMIN4_EMAIL?.toLowerCase() ? 'Admin 4' :
+                                          'Admin (unknown slot)'
 
             console.log(`✅ ${adminLabel} ready: ${admin.email} | hash: ${isHashed ? 'OK ✓' : 'FAILED ✗'}`)
 
