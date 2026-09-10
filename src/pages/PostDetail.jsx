@@ -1,10 +1,10 @@
 // PostDetail.jsx — SEO-friendly slug URLs with ID backward compatibility
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { fetchPost, fetchPostBySlug, normaliseJob } from '../services/api.js'
+import { fetchPost, fetchPostBySlug, fetchPostsByType, normaliseJob, CATEGORY_TO_TYPE } from '../services/api.js'
 import { recordView } from './Home'
 import ContentRenderer from '../components/ContentRenderer.jsx'
-import { AlertCircle, ArrowLeft, Loader2, Share2, Check, UserCircle2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Loader2, Share2, Check, UserCircle2, Sparkles, ArrowRight } from 'lucide-react'
 
 const CAT_BACK = {
       GOVERNMENT_JOB: '/government-jobs',
@@ -13,6 +13,15 @@ const CAT_BACK = {
       TIME_TABLE: '/time-table',
       RESULT: '/results',
       ADMIT_CARD: '/admit-cards',
+}
+
+const CAT_NAMES = {
+      GOVERNMENT_JOB: 'Government Jobs',
+      PRIVATE_JOB: 'Private Jobs',
+      INTERNSHIP: 'Internships',
+      TIME_TABLE: 'Time Table',
+      RESULT: 'Results',
+      ADMIT_CARD: 'Admit Cards',
 }
 
 /** A cuid looks like: c + 24 alphanumeric chars, no hyphens in specific positions */
@@ -25,6 +34,7 @@ const PostDetail = () => {
       const [notFound, setNotFound] = useState(false)
       const [loading, setLoading] = useState(true)
       const [copied, setCopied] = useState(false)
+      const [latestJobs, setLatestJobs] = useState([])
 
       useEffect(() => {
             setLoading(true)
@@ -110,6 +120,20 @@ const PostDetail = () => {
             load()
       }, [slug, navigate])
 
+      // Fetch latest jobs for the sidebar
+      useEffect(() => {
+            const type = post?.category ? (CATEGORY_TO_TYPE[post.category] || 'GOVERNMENT') : 'GOVERNMENT'
+            fetchPostsByType(type, { limit: 8, status: 'PUBLISHED' })
+                  .then((res) => {
+                        const items = (res.data || [])
+                              .map(normaliseJob)
+                              .filter((j) => j.id !== post?.id)
+                              .slice(0, 5)
+                        setLatestJobs(items)
+                  })
+                  .catch(() => setLatestJobs([]))
+      }, [post?.category, post?.id])
+
       const handleShare = () => {
             const url = window.location.href
             if (navigator.share) {
@@ -167,83 +191,163 @@ const PostDetail = () => {
             d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null
 
       return (
-            <div className="max-w-3xl mx-auto pb-12 space-y-6">
+            /* Outer wrapper uses wide layout with responsive 2-column article + sidebar.
+               Main article has comfortable reading width, sidebar fills the right side. */
+            <div className="w-full pb-12">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                  {/* Back link */}
-                  <Link
-                        to={back}
-                        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors"
-                  >
-                        <ArrowLeft size={15} /> Back
-                  </Link>
+                        {/* ── Main Article Column ── */}
+                        <article className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 space-y-6">
+                              {/* Back link */}
+                              <Link
+                                    to={back}
+                                    className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors"
+                              >
+                                    <ArrowLeft size={16} /> Back to {CAT_NAMES[post.category] || 'Jobs'}
+                              </Link>
 
-                  {/* Title */}
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-                        {post.title}
-                  </h1>
-
-                  <div className="border-t border-gray-100" />
-
-                  {/* Content */}
-                  {hasContent && (
-                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                              <ContentRenderer contentBlocks={post.contentBlocks} />
-                        </div>
-                  )}
-
-                  {hasLegacyDesc && (
-                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
-                                    {post.description}
-                              </p>
-                        </div>
-                  )}
-
-                  {!hasContent && !hasLegacyDesc && (
-                        <p className="text-gray-400 text-sm italic">No content available for this post.</p>
-                  )}
-
-                  {/* ── Footer bar: Share + Posted by ── */}
-                  <div className="border-t border-gray-100 pt-5 flex items-center justify-between gap-4 flex-wrap">
-
-                        {/* Posted by */}
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <UserCircle2 size={18} className="text-gray-400 flex-shrink-0" />
-                              <span>
-                                    Posted by{' '}
-                                    <span className="font-semibold text-gray-700">
-                                          {post.createdByName || 'Admin'}
-                                    </span>
-                                    {post.createdAt && (
-                                          <span className="text-gray-400 ml-1 font-normal">
-                                                · {fmtDate(post.createdAt)}
+                              {/* Title & Metadata Header */}
+                              <div className="space-y-3">
+                                    {post.category && (
+                                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                                                {CAT_NAMES[post.category] || post.category}
                                           </span>
                                     )}
-                              </span>
-                        </div>
+                                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight">
+                                          {post.title}
+                                    </h1>
+                                    <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500 flex-wrap">
+                                          <span className="flex items-center gap-1.5">
+                                                <UserCircle2 size={16} className="text-slate-400" />
+                                                {post.createdByName || 'Admin'}
+                                          </span>
+                                          {post.createdAt && (
+                                                <span>· {fmtDate(post.createdAt)}</span>
+                                          )}
+                                    </div>
+                              </div>
 
-                        {/* Share button */}
-                        <button
-                              onClick={handleShare}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${copied
-                                    ? 'bg-green-50 border-green-300 text-green-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
-                                    }`}
-                        >
-                              {copied ? (
-                                    <>
-                                          <Check size={15} className="text-green-600" />
-                                          Link Copied!
-                                    </>
-                              ) : (
-                                    <>
-                                          <Share2 size={15} />
-                                          Share
-                                    </>
+                              <div className="border-t border-slate-200/80" />
+
+                              {/* Content */}
+                              {hasContent && (
+                                    <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+                                          <ContentRenderer contentBlocks={post.contentBlocks} />
+                                    </div>
                               )}
-                        </button>
-                  </div>
 
+                              {hasLegacyDesc && (
+                                    <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+                                          <p className="text-slate-700 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+                                                {post.description}
+                                          </p>
+                                    </div>
+                              )}
+
+                              {!hasContent && !hasLegacyDesc && (
+                                    <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+                                          <p className="text-slate-400 text-sm italic">No content available for this post.</p>
+                                    </div>
+                              )}
+
+                              {/* ── Footer bar: Share + Posted by ── */}
+                              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex items-center justify-between gap-4 flex-wrap">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                          <UserCircle2 size={18} className="text-slate-400 flex-shrink-0" />
+                                          <span>
+                                                Posted by{' '}
+                                                <span className="font-semibold text-slate-800">
+                                                      {post.createdByName || 'Admin'}
+                                                </span>
+                                                {post.createdAt && (
+                                                      <span className="text-slate-400 ml-1 font-normal">
+                                                            · {fmtDate(post.createdAt)}
+                                                      </span>
+                                                )}
+                                          </span>
+                                    </div>
+
+                                    <button
+                                          onClick={handleShare}
+                                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all duration-200 ${copied
+                                                ? 'bg-green-50 border-green-300 text-green-700'
+                                                : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400'
+                                                }`}
+                                    >
+                                          {copied ? (
+                                                <>
+                                                      <Check size={16} className="text-green-600" />
+                                                      Link Copied!
+                                                </>
+                                          ) : (
+                                                <>
+                                                      <Share2 size={16} />
+                                                      Share Post
+                                                </>
+                                          )}
+                                    </button>
+                              </div>
+                        </article>
+
+                        {/* ── Sidebar Column ── */}
+                        <aside className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 space-y-6">
+                              {/* Latest Opportunities Sidebar Card */}
+                              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                                    <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                                          <div className="flex items-center gap-2">
+                                                <Sparkles size={16} className="text-blue-600" />
+                                                <h2 className="font-bold text-slate-800 text-sm">Latest Jobs</h2>
+                                          </div>
+                                          <Link
+                                                to={back}
+                                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                                          >
+                                                View all
+                                          </Link>
+                                    </div>
+                                    {latestJobs.length > 0 ? (
+                                          <div className="space-y-3">
+                                                {latestJobs.map((item) => (
+                                                      <Link
+                                                            key={item.id}
+                                                            to={`/posts/${item.slug || item.id}`}
+                                                            className="block p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-blue-50/50 hover:border-blue-200 transition-all duration-150 group"
+                                                      >
+                                                            <h3 className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2">
+                                                                  {item.title}
+                                                            </h3>
+                                                            {item.organization && (
+                                                                  <p className="text-[11px] text-slate-500 mt-1 truncate">
+                                                                        {item.organization}
+                                                                  </p>
+                                                            )}
+                                                      </Link>
+                                                ))}
+                                          </div>
+                                    ) : (
+                                          <p className="text-xs text-slate-400 py-2">Check back soon for new opportunities.</p>
+                                    )}
+                              </div>
+
+                              {/* Explore Categories Sidebar Card */}
+                              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+                                    <h2 className="font-bold text-slate-800 text-sm mb-3">Explore Categories</h2>
+                                    <div className="space-y-1">
+                                          {Object.entries(CAT_BACK).map(([catKey, path]) => (
+                                                <Link
+                                                      key={catKey}
+                                                      to={path}
+                                                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors"
+                                                >
+                                                      <span>{CAT_NAMES[catKey] || catKey}</span>
+                                                      <ArrowRight size={13} className="text-slate-400" />
+                                                </Link>
+                                          ))}
+                                    </div>
+                              </div>
+                        </aside>
+
+                  </div>
             </div>
       )
 }

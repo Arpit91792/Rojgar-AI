@@ -42,3 +42,6 @@ Thumbs.db
 # Uploads
 uploads/
 public/uploads/
+
+# Local tool runner helper
+powershell.bat

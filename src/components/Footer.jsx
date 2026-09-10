@@ -34,7 +34,7 @@ const Footer = () => (
             {/* Top gradient strip */}
             <div className="h-1 gradient-hero" />
 
-            <div className="px-6 lg:px-10 py-14">
+            <div className="w-[95%] sm:w-[94%] lg:w-[95%] mx-auto py-12 sm:py-14">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
 
                         {/* Brand */}

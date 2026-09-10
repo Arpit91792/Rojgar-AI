@@ -4,7 +4,7 @@ import {
       Building2, GraduationCap, Briefcase, Calendar,
       FileText, FileCheck, ChevronRight,
       Search, TrendingUp, Star, ArrowRight, Sparkles,
-      Users, Clock
+      Clock
 } from 'lucide-react'
 import { fetchPostsByType } from '../services/api.js'
 import { normaliseJob } from '../services/api.js'
@@ -69,39 +69,39 @@ const HeroSearch = () => {
             <section className="relative overflow-hidden rounded-3xl gradient-hero text-white mb-8">
                   <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
                   <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4 pointer-events-none" />
-                  <div className="relative px-5 py-6 sm:px-8 sm:py-8 text-center">
+                  <div className="relative px-6 py-8 sm:px-10 sm:py-10 text-center">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold text-blue-100 mb-3">
                               <Sparkles size={11} className="text-yellow-300" /> RozgarGrid AI
                         </div>
-                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight mb-2">
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-extrabold leading-tight mb-2">
                               Find Your Dream{' '}
                               <span className={`transition-all duration-300 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'} inline-block text-yellow-300`}>
                                     {WORDS[idx]}
                               </span>
                         </h1>
-                        <p className="text-blue-100 text-xs sm:text-sm mb-4 max-w-md mx-auto">
+                        <p className="text-blue-100 text-xs sm:text-sm mb-5 max-w-xl mx-auto">
                               Thousands of opportunities updated daily across government, private & more.
                         </p>
-                        <form onSubmit={handleSubmit} className="flex gap-2 max-w-lg mx-auto">
+                        <form onSubmit={handleSubmit} className="flex gap-2 max-w-2xl mx-auto">
                               <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <input
                                           type="text"
                                           value={query}
                                           onChange={(e) => setQuery(e.target.value)}
                                           placeholder="Job title, company, keyword…"
-                                          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-slate-800 text-sm bg-white shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-300/60 placeholder:text-slate-400"
+                                          className="w-full pl-9 pr-4 py-3 rounded-xl text-slate-800 text-sm bg-white shadow-lg focus:outline-none focus:ring-2 focus:ring-yellow-300/60 placeholder:text-slate-400"
                                     />
                               </div>
-                              <button type="submit" className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold rounded-xl shadow-lg transition-colors text-sm whitespace-nowrap">
+                              <button type="submit" className="px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold rounded-xl shadow-lg transition-colors text-sm whitespace-nowrap">
                                     Search
                               </button>
                         </form>
-                        <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
+                        <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
                               <span className="text-blue-200 text-xs">Trending:</span>
                               {['UPSC', 'SSC CGL', 'Railways', 'Bank PO', 'IT Jobs'].map((tag) => (
                                     <button key={tag} onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
-                                          className="px-2.5 py-0.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-medium text-white transition-colors">
+                                          className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 text-xs font-medium text-white transition-colors">
                                           {tag}
                                     </button>
                               ))}
@@ -110,30 +110,6 @@ const HeroSearch = () => {
             </section>
       )
 }
-
-// ── Stats bar ─────────────────────────────────────────────────────────────────
-const STATS = [
-      { icon: Briefcase, value: '10,000+', label: 'Active Jobs' },
-      { icon: Building2, value: '500+', label: 'Organizations' },
-      { icon: Users, value: '1 Lakh+', label: 'Job Seekers' },
-      { icon: TrendingUp, value: 'Daily', label: 'Updates' },
-]
-
-const StatsBar = () => (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            {STATS.map(({ icon: Icon, value, label }) => (
-                  <div key={label} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                              <Icon size={18} className="text-blue-600" />
-                        </div>
-                        <div>
-                              <p className="font-extrabold text-slate-800 text-base leading-none">{value}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-                        </div>
-                  </div>
-            ))}
-      </div>
-)
 
 const SectionHeader = ({ icon: Icon, iconBg, iconColor, title, linkTo, linkLabel }) => (
       <div className="flex items-center justify-between mb-5">
@@ -211,7 +187,6 @@ const Home = () => {
       return (
             <div className="space-y-8">
                   <HeroSearch />
-                  <StatsBar />
 
                   {/* Browse Categories */}
                   <section>

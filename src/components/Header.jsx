@@ -95,7 +95,7 @@ const Header = () => {
             <>
                   {/* ── Topbar ── */}
                   <header className="fixed top-0 left-0 right-0 z-30 glass border-b border-slate-200/80 shadow-sm">
-                        <div className="flex items-center h-16 w-full px-4 sm:px-6 gap-4 overflow-hidden">
+                        <div className="flex items-center h-16 w-[95%] sm:w-[94%] lg:w-[95%] mx-auto gap-4 overflow-hidden">
 
                               {/* Hamburger (mobile only) */}
                               <button
