@@ -49,24 +49,30 @@ router.post('/admin/login', adminLoginLimiter, validate(loginSchema), async (req
       try {
             const { email, password } = req.body
 
+            // Normalise email to lowercase — case-insensitive login
+            const normalisedEmail = email.trim().toLowerCase()
+
             // Find user — must be active
             const user = await prisma.user.findUnique({
-                  where: { email, isActive: true },
+                  where: { email: normalisedEmail, isActive: true },
             })
 
             // Generic error to prevent user enumeration
             if (!user) {
+                  console.warn(`[AUTH] Admin login failed — user not found: ${normalisedEmail}`)
                   return res.status(401).json({ status: 'error', message: 'Invalid credentials' })
             }
 
             // Verify password (constant-time compare via bcrypt)
             const valid = await bcrypt.compare(password, user.password)
             if (!valid) {
+                  console.warn(`[AUTH] Admin login failed — wrong password for: ${normalisedEmail}`)
                   return res.status(401).json({ status: 'error', message: 'Invalid credentials' })
             }
 
             // Must be ADMIN role
             if (user.role !== 'ADMIN') {
+                  console.warn(`[AUTH] Admin login denied — not admin role: ${normalisedEmail}`)
                   return res.status(403).json({ status: 'error', message: 'Access denied: admin role required' })
             }
 
@@ -78,6 +84,9 @@ router.post('/admin/login', adminLoginLimiter, validate(loginSchema), async (req
 
             // Set HTTP-only cookie — token never reaches frontend JS
             setRefreshCookie(res, refreshToken)
+
+            // Log successful login — name and email only, never password
+            console.info(`[AUTH] Admin login successful: "${user.name}" <${user.email}>`)
 
             return res.json({
                   status: 'success',

@@ -36,6 +36,11 @@ async function main() {
                   password: process.env.ADMIN2_PASSWORD,
                   name: process.env.ADMIN2_NAME || 'Admin2',
             },
+            {
+                  email: process.env.ADMIN3_EMAIL,
+                  password: process.env.ADMIN3_PASSWORD,
+                  name: process.env.ADMIN3_NAME || 'Admin3',
+            },
       ].filter((a) => a.email && a.password) // skip if not set
 
       if (admins.length === 0) {
@@ -47,15 +52,21 @@ async function main() {
             const passwordHash = await bcrypt.hash(password, saltRounds)
 
             const admin = await prisma.user.upsert({
-                  where: { email },
-                  update: { password: passwordHash, role: 'ADMIN', isActive: true },
-                  create: { email, name, password: passwordHash, role: 'ADMIN', isActive: true },
+                  where: { email: email.toLowerCase().trim() },
+                  update: { password: passwordHash, role: 'ADMIN', isActive: true, name },
+                  create: { email: email.toLowerCase().trim(), name, password: passwordHash, role: 'ADMIN', isActive: true },
             })
 
-            const stored = await prisma.user.findUnique({ where: { email } })
+            const stored = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
             const isHashed = stored?.password?.startsWith('$2')
 
-            console.log(`✅ Admin ready: ${admin.email} | hash: ${isHashed ? 'OK ✓' : 'FAILED ✗'}`)
+            const adminLabel =
+                  email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'Admin 1 (primary)' :
+                        email.toLowerCase() === process.env.ADMIN2_EMAIL?.toLowerCase() ? 'Admin 2' :
+                              email.toLowerCase() === process.env.ADMIN3_EMAIL?.toLowerCase() ? 'Admin 3' :
+                                    'Admin (unknown slot)'
+
+            console.log(`✅ ${adminLabel} ready: ${admin.email} | hash: ${isHashed ? 'OK ✓' : 'FAILED ✗'}`)
 
             if (!isHashed) {
                   console.error('❌ CRITICAL: Password was not hashed correctly!')
