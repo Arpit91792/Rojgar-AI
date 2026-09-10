@@ -26,7 +26,16 @@ export const DataProvider = ({ children }) => {
             }
       }, [])
 
-      useEffect(() => { loadAll() }, [loadAll])
+      // Only auto-load if an admin token exists in localStorage (used by admin pages)
+      // Anonymous public visitors never fire /api/jobs?limit=100 on initial page mount
+      useEffect(() => {
+            const hasAdminToken = !!localStorage.getItem('admin_token')
+            if (hasAdminToken) {
+                  loadAll()
+            } else {
+                  setLoading(false)
+            }
+      }, [loadAll])
 
       // Derived slices by category
       const byCategory = (cat) => posts.filter((p) => p.category === cat)

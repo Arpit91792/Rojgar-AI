@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search, Building2, Briefcase, GraduationCap, Calendar, FileText, FileCheck, X, Loader2 } from 'lucide-react'
-import { fetchPostsByType, normaliseJob } from '../services/api.js'
+import { fetchPosts, normaliseJob } from '../services/api.js'
 
 const CAT_META = {
       GOVERNMENT_JOB: { label: 'Govt Job', color: 'bg-blue-100 text-blue-700', icon: Building2 },
@@ -32,18 +32,26 @@ const SearchPage = () => {
       const [allPosts, setAllPosts] = useState([])
       const [loading, setLoading] = useState(false)
 
-      // Fetch all published posts from API on mount
+      // Fetch published posts from API on mount using a single request
       useEffect(() => {
+            let active = true
             setLoading(true)
-            Promise.all(
-                  TYPES.map((t) =>
-                        fetchPostsByType(t, { limit: 100, status: 'PUBLISHED' })
-                              .then((r) => (r.data || []).map(normaliseJob))
-                              .catch(() => [])
-                  )
-            ).then((results) => {
-                  setAllPosts(results.flat())
-            }).finally(() => setLoading(false))
+            fetchPosts({ limit: 100, status: 'PUBLISHED' })
+                  .then((res) => {
+                        if (!active) return
+                        const posts = (res?.data || []).map(normaliseJob)
+                        setAllPosts(posts)
+                  })
+                  .catch((err) => {
+                        if (!active) return
+                        console.error('SearchPage load error:', err)
+                        setAllPosts([])
+                  })
+                  .finally(() => {
+                        if (active) setLoading(false)
+                  })
+
+            return () => { active = false }
       }, [])
 
       useEffect(() => {

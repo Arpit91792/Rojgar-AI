@@ -10,6 +10,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxy headers (Render, Vercel, Cloudflare) for accurate client IP identification
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
       contentSecurityPolicy: {
@@ -32,13 +35,40 @@ app.use(cors({
       allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000, // 15 minutes
-      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-      message: 'Too many requests from this IP, please try again later.'
+// Rate limiting configuration
+// 1) Public read-only limiter: Allow generous limits for normal browsing, search, and category exploration
+const publicReadLimiter = rateLimit({
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+      max: parseInt(process.env.PUBLIC_READ_RATE_LIMIT_MAX) || 600, // 600 requests per 15 min per IP
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+            status: 'error',
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests from this IP, please try again in a few moments.'
+      }
 });
-app.use('/api', limiter);
+
+// 2) Write / Mutation / General API limiter: Stricter for state changes and sensitive requests
+const apiLimiter = rateLimit({
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 100 requests per 15 min per IP
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+            status: 'error',
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests from this IP, please try again later.'
+      }
+});
+
+// Apply rate limiting: publicReadLimiter for GET/OPTIONS, apiLimiter for POST/PUT/DELETE
+app.use('/api', (req, res, next) => {
+      if (req.method === 'GET' || req.method === 'OPTIONS') {
+            return publicReadLimiter(req, res, next);
+      }
+      return apiLimiter(req, res, next);
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

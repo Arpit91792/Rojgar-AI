@@ -232,47 +232,156 @@ export const parseJobToForm = (job) => {
       }
 }
 
-// ── Public helpers ────────────────────────────────────────────────────────────
-export const fetchPosts = (params = {}) =>
-      api.get('/api/jobs', { params }).then((r) => r.data)
+// ── In-Flight Request Deduplication & In-Memory TTL Cache ─────────────────────
+const inFlightRequests = new Map()
+const apiCache = new Map()
+const DEFAULT_TTL_MS = 60 * 1000 // 60 seconds
 
-export const fetchPost = (id) =>
-      api.get(`/api/jobs/${id}`).then((r) => r.data)
+export const clearApiCache = () => {
+      apiCache.clear()
+}
+
+/**
+ * Structured error parser to clearly distinguish:
+ * - 429 Rate Limit
+ * - 500+ Server Error
+ * - Network / CORS / Offline
+ * - 404 Not Found
+ */
+export const parseApiError = (err) => {
+      if (err?.isCustomApiError) return err
+
+      const status = err?.response?.status || 0
+      const data = err?.response?.data
+
+      let type = 'UNKNOWN'
+      let message = 'An unexpected error occurred.'
+
+      if (status === 429) {
+            type = 'RATE_LIMITED'
+            message = data?.message || 'Too many requests. Please wait a moment and try again.'
+      } else if (status >= 500) {
+            type = 'SERVER_ERROR'
+            message = data?.message || 'Server error occurred. Please try again later.'
+      } else if (status === 404) {
+            type = 'NOT_FOUND'
+            message = data?.message || 'The requested post was not found.'
+      } else if (!err?.response && (err?.message?.includes('Network Error') || err?.code === 'ERR_NETWORK')) {
+            type = 'NETWORK_ERROR'
+            message = 'Unable to connect to the server. Please check your internet connection.'
+      } else if (data?.message) {
+            message = data.message
+      }
+
+      const parsedError = new Error(message)
+      parsedError.isCustomApiError = true
+      parsedError.status = status
+      parsedError.type = type
+      parsedError.isRateLimit = status === 429
+      parsedError.isServerError = status >= 500
+      parsedError.isNetworkError = type === 'NETWORK_ERROR'
+      parsedError.retryAfter = parseInt(err?.response?.headers?.['retry-after']) || null
+      parsedError.originalError = err
+
+      return parsedError
+}
+
+/**
+ * Cached & deduplicated GET request
+ */
+export const cachedGet = async (url, params = {}, options = {}) => {
+      const { ttl = DEFAULT_TTL_MS, bypassCache = false } = options
+
+      // Generate consistent cache key from URL and sorted query params
+      const sortedEntries = Object.entries(params)
+            .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+            .sort(([a], [b]) => a.localeCompare(b))
+      const paramStr = new URLSearchParams(sortedEntries).toString()
+      const cacheKey = `GET:${url}?${paramStr}`
+
+      // 1. Check TTL cache
+      if (!bypassCache) {
+            const cached = apiCache.get(cacheKey)
+            if (cached && cached.expiresAt > Date.now()) {
+                  return cached.data
+            }
+      }
+
+      // 2. Check pending in-flight promise (deduplication)
+      if (inFlightRequests.has(cacheKey)) {
+            return inFlightRequests.get(cacheKey)
+      }
+
+      // 3. Dispatch request and record in-flight promise
+      const requestPromise = api.get(url, { params })
+            .then((res) => {
+                  apiCache.set(cacheKey, {
+                        data: res.data,
+                        timestamp: Date.now(),
+                        expiresAt: Date.now() + ttl,
+                  })
+                  return res.data
+            })
+            .catch((err) => {
+                  throw parseApiError(err)
+            })
+            .finally(() => {
+                  inFlightRequests.delete(cacheKey)
+            })
+
+      inFlightRequests.set(cacheKey, requestPromise)
+      return requestPromise
+}
+
+// ── Public helpers ────────────────────────────────────────────────────────────
+export const fetchPosts = (params = {}, options = {}) =>
+      cachedGet('/api/jobs', params, options)
+
+export const fetchPost = (id, options = {}) =>
+      cachedGet(`/api/jobs/${id}`, {}, options)
 
 /** Fetch a published post by its SEO slug */
-export const fetchPostBySlug = (slug) =>
-      api.get(`/api/jobs/slug/${slug}`).then((r) => r.data)
+export const fetchPostBySlug = (slug, options = {}) =>
+      cachedGet(`/api/jobs/slug/${slug}`, {}, options)
 
-export const fetchPostsByType = (type, params = {}) =>
-      api.get('/api/jobs', { params: { type, status: 'PUBLISHED', ...params } }).then((r) => r.data)
+export const fetchPostsByType = (type, params = {}, options = {}) =>
+      cachedGet('/api/jobs', { type, status: 'PUBLISHED', ...params }, options)
 
 // ── Admin auth helpers ────────────────────────────────────────────────────────
 export const adminLogin = (email, password) =>
-      api.post('/api/auth/admin/login', { email, password }).then((r) => r.data)
+      api.post('/api/auth/admin/login', { email, password }).then((r) => r.data).catch((err) => { throw parseApiError(err) })
 
-export const adminLogout = () =>
-      api.post('/api/auth/logout').then((r) => r.data)
+export const adminLogout = () => {
+      clearApiCache()
+      return api.post('/api/auth/logout').then((r) => r.data).catch((err) => { throw parseApiError(err) })
+}
 
 export const getMe = () =>
-      adminApi.get('/api/auth/me').then((r) => r.data)
+      adminApi.get('/api/auth/me').then((r) => r.data).catch((err) => { throw parseApiError(err) })
 
 // ── Admin CRUD helpers ────────────────────────────────────────────────────────
-export const adminGetPosts = (params = {}) =>
-      adminApi.get('/api/jobs', { params }).then((r) => r.data)
+export const adminGetPosts = (params = {}, options = {}) =>
+      adminApi.get('/api/jobs', { params }).then((r) => r.data).catch((err) => { throw parseApiError(err) })
 
 export const adminGetPost = (id) =>
-      adminApi.get(`/api/jobs/${id}`).then((r) => r.data)
+      adminApi.get(`/api/jobs/${id}`).then((r) => r.data).catch((err) => { throw parseApiError(err) })
 
-export const adminCreatePost = (data) =>
-      adminApi.post('/api/jobs', data).then((r) => r.data)
+export const adminCreatePost = (data) => {
+      clearApiCache()
+      return adminApi.post('/api/jobs', data).then((r) => r.data).catch((err) => { throw parseApiError(err) })
+}
 
-export const adminUpdatePost = (id, data) =>
-      adminApi.put(`/api/jobs/${id}`, data).then((r) => r.data)
+export const adminUpdatePost = (id, data) => {
+      clearApiCache()
+      return adminApi.put(`/api/jobs/${id}`, data).then((r) => r.data).catch((err) => { throw parseApiError(err) })
+}
 
-export const adminDeletePost = (id) =>
-      adminApi.delete(`/api/jobs/${id}`).then((r) => r.data)
+export const adminDeletePost = (id) => {
+      clearApiCache()
+      return adminApi.delete(`/api/jobs/${id}`).then((r) => r.data).catch((err) => { throw parseApiError(err) })
+}
 
 export const adminGetStats = () =>
-      adminApi.get('/api/admin/stats').then((r) => r.data)
+      adminApi.get('/api/admin/stats').then((r) => r.data).catch((err) => { throw parseApiError(err) })
 
 export default api

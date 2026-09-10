@@ -6,8 +6,7 @@ import {
       Search, TrendingUp, Star, ArrowRight, Sparkles,
       Clock
 } from 'lucide-react'
-import { fetchPostsByType } from '../services/api.js'
-import { normaliseJob } from '../services/api.js'
+import { fetchPosts, fetchPost, normaliseJob } from '../services/api.js'
 
 // ── Category config ───────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -143,32 +142,32 @@ const Home = () => {
       const [recentPosts, setRecentPosts] = useState([])
       const [loadingLatest, setLoadingLatest] = useState(true)
 
-      // Load latest 4 published posts from API
+      // Load latest 4 published posts from API using a single efficient request
       useEffect(() => {
+            let active = true
             setLoadingLatest(true)
-            // Fetch across all types, sorted by createdAt desc, take 4
-            fetchPostsByType('GOVERNMENT', { limit: 10, status: 'PUBLISHED' })
+
+            fetchPosts({ limit: 4, status: 'PUBLISHED', sortBy: 'createdAt', sortOrder: 'desc' })
                   .then((res) => {
-                        // Fetch a broad set and take the 4 most recent
-                        const all = (res.data || []).map(normaliseJob)
+                        if (!active) return
+                        const all = (res?.data || []).map(normaliseJob)
                         setLatestPosts(all.slice(0, 4))
                   })
-                  .catch(() => setLatestPosts([]))
-                  .finally(() => setLoadingLatest(false))
+                  .catch((err) => {
+                        if (!active) return
+                        console.error('Home load error:', err)
+                        setLatestPosts([])
+                  })
+                  .finally(() => {
+                        if (active) setLoadingLatest(false)
+                  })
 
-            // Better: fetch all types and pick the 4 newest
-            const types = ['GOVERNMENT', 'PRIVATE', 'INTERNSHIP', 'TIME_TABLE', 'RESULT', 'ADMIT_CARD']
-            Promise.all(
-                  types.map((t) => fetchPostsByType(t, { limit: 20, status: 'PUBLISHED' }).then((r) => r.data || []).catch(() => []))
-            ).then((results) => {
-                  const all = results.flat().map(normaliseJob)
-                  all.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-                  setLatestPosts(all.slice(0, 4))
-            }).finally(() => setLoadingLatest(false))
+            return () => { active = false }
       }, [])
 
-      // Recently viewed — load from API using stored ids
+      // Recently viewed — load using stored ids with deduplication & caching
       useEffect(() => {
+            let active = true
             const ids = (() => {
                   try { return JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || '[]') } catch { return [] }
             })()
@@ -176,12 +175,15 @@ const Home = () => {
 
             Promise.all(
                   ids.slice(0, MAX_RECENT).map((id) =>
-                        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/jobs/${id}`)
-                              .then((r) => r.json())
-                              .then((r) => r.data && r.data.status === 'PUBLISHED' ? normaliseJob(r.data) : null)
+                        fetchPost(id)
+                              .then((res) => res?.data && res.data.status === 'PUBLISHED' ? normaliseJob(res.data) : null)
                               .catch(() => null)
                   )
-            ).then((posts) => setRecentPosts(posts.filter(Boolean)))
+            ).then((posts) => {
+                  if (active) setRecentPosts(posts.filter(Boolean))
+            })
+
+            return () => { active = false }
       }, [])
 
       return (

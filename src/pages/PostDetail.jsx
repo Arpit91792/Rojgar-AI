@@ -120,18 +120,26 @@ const PostDetail = () => {
             load()
       }, [slug, navigate])
 
-      // Fetch latest jobs for the sidebar
+      // Fetch latest jobs for the sidebar only when post has loaded
       useEffect(() => {
-            const type = post?.category ? (CATEGORY_TO_TYPE[post.category] || 'GOVERNMENT') : 'GOVERNMENT'
+            if (!post?.id) return
+            let active = true
+
+            const type = post.category ? (CATEGORY_TO_TYPE[post.category] || 'GOVERNMENT') : 'GOVERNMENT'
             fetchPostsByType(type, { limit: 8, status: 'PUBLISHED' })
                   .then((res) => {
-                        const items = (res.data || [])
+                        if (!active) return
+                        const items = (res?.data || [])
                               .map(normaliseJob)
-                              .filter((j) => j.id !== post?.id)
+                              .filter((j) => j.id !== post.id)
                               .slice(0, 5)
                         setLatestJobs(items)
                   })
-                  .catch(() => setLatestJobs([]))
+                  .catch(() => {
+                        if (active) setLatestJobs([])
+                  })
+
+            return () => { active = false }
       }, [post?.category, post?.id])
 
       const handleShare = () => {

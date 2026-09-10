@@ -11,18 +11,34 @@ const usePosts = (category = null, status = null) => {
       const [posts, setPosts] = useState([])
       const [loading, setLoading] = useState(true)
       const [error, setError] = useState(null)
+      const [errorType, setErrorType] = useState(null)
 
       const loadPosts = useCallback(async () => {
             try {
                   setLoading(true)
                   setError(null)
+                  setErrorType(null)
                   const data = category
                         ? await postService.getPostsByCategory(category, status)
                         : await postService.getPosts()
-                  setPosts(data)
+                  setPosts(data || [])
             } catch (err) {
                   console.error('[usePosts] load error:', err)
-                  setError('Unable to load posts from server.')
+                  const status = err?.status || err?.response?.status
+
+                  if (status === 429 || err?.type === 'RATE_LIMITED' || err?.isRateLimit) {
+                        setErrorType('RATE_LIMITED')
+                        setError('Too many requests. Please wait a moment before trying again.')
+                  } else if (status >= 500 || err?.type === 'SERVER_ERROR' || err?.isServerError) {
+                        setErrorType('SERVER_ERROR')
+                        setError('Server error occurred. Please try again later.')
+                  } else if (err?.type === 'NETWORK_ERROR' || err?.isNetworkError || !err?.response) {
+                        setErrorType('NETWORK_ERROR')
+                        setError('Unable to connect to the server. Please check your connection.')
+                  } else {
+                        setErrorType('UNKNOWN')
+                        setError(err?.message || 'Unable to load posts from server.')
+                  }
                   setPosts([])
             } finally {
                   setLoading(false)
@@ -64,7 +80,7 @@ const usePosts = (category = null, status = null) => {
       }, [loadPosts])
 
       return {
-            posts, loading, error,
+            posts, loading, error, errorType,
             reload: loadPosts,
             createPost, updatePost, deletePost,
             publishPost, unpublishPost, archivePost,
